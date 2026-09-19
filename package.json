@@ -13,6 +13,9 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage"
   },
+  "overrides": {
+    "vite": "^5.4.0"
+  },
   "dependencies": {
     "@sentry/react": "^7.99.0",
     "@supabase/supabase-js": "^2.57.4",
