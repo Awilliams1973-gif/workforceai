@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/lib/store';
 import PublicNav from '@/components/PublicNav';
@@ -220,56 +221,69 @@ function App() {
 
   // Auth page — standalone, no nav/footer
   if (view === 'auth') {
-    return <AuthPage />;
+    return (
+      <>
+        <AuthPage />
+        <SpeedInsights />
+      </>
+    );
   }
 
   // Dashboard views require authentication
   if (dashboardViews.includes(view)) {
     if (!user) {
-      return <AuthPage />;
+      return (
+        <>
+          <AuthPage />
+          <SpeedInsights />
+        </>
+      );
     }
     return (
-      <DashboardLayout>
-        <GridErrorBoundary>
-          {view === 'dashboard' && <DashboardHome />}
-        </GridErrorBoundary>
-        <LeadsErrorBoundary>
-          {view === 'leads' && <LeadsPage />}
-        </LeadsErrorBoundary>
-        <AppointmentsErrorBoundary>
-          {view === 'appointments' && <AppointmentsPage />}
-        </AppointmentsErrorBoundary>
-        <SectionErrorBoundary>
-          {view === 'receptionist' && <ReceptionistPage />}
-        </SectionErrorBoundary>
-        <ConversationsErrorBoundary>
-          {view === 'conversations' && <ConversationsPage />}
-        </ConversationsErrorBoundary>
-        <KnowledgeErrorBoundary>
-          {view === 'knowledge' && <KnowledgePage />}
-        </KnowledgeErrorBoundary>
-        <SectionErrorBoundary>
-          {view === 'sales' && <AIEmployeePage employeeId="sales" />}
-        </SectionErrorBoundary>
-        <SectionErrorBoundary>
-          {view === 'appointments-assistant' && <AIEmployeePage employeeId="appointments-assistant" />}
-        </SectionErrorBoundary>
-        <SectionErrorBoundary>
-          {view === 'marketing' && <AIEmployeePage employeeId="marketing" />}
-        </SectionErrorBoundary>
-        <SectionErrorBoundary>
-          {view === 'reviews' && <AIEmployeePage employeeId="reviews" />}
-        </SectionErrorBoundary>
-        <SectionErrorBoundary>
-          {view === 'pricing' && <PricingPage />}
-        </SectionErrorBoundary>
-        <SectionErrorBoundary>
-          {view === 'settings' && <SettingsPage />}
-        </SectionErrorBoundary>
-        <SectionErrorBoundary>
-          {view === 'audit-leads' && isAdmin && <AuditLeadsPage />}
-        </SectionErrorBoundary>
-      </DashboardLayout>
+      <>
+        <DashboardLayout>
+          <GridErrorBoundary>
+            {view === 'dashboard' && <DashboardHome />}
+          </GridErrorBoundary>
+          <LeadsErrorBoundary>
+            {view === 'leads' && <LeadsPage />}
+          </LeadsErrorBoundary>
+          <AppointmentsErrorBoundary>
+            {view === 'appointments' && <AppointmentsPage />}
+          </AppointmentsErrorBoundary>
+          <SectionErrorBoundary>
+            {view === 'receptionist' && <ReceptionistPage />}
+          </SectionErrorBoundary>
+          <ConversationsErrorBoundary>
+            {view === 'conversations' && <ConversationsPage />}
+          </ConversationsErrorBoundary>
+          <KnowledgeErrorBoundary>
+            {view === 'knowledge' && <KnowledgePage />}
+          </KnowledgeErrorBoundary>
+          <SectionErrorBoundary>
+            {view === 'sales' && <AIEmployeePage employeeId="sales" />}
+          </SectionErrorBoundary>
+          <SectionErrorBoundary>
+            {view === 'appointments-assistant' && <AIEmployeePage employeeId="appointments-assistant" />}
+          </SectionErrorBoundary>
+          <SectionErrorBoundary>
+            {view === 'marketing' && <AIEmployeePage employeeId="marketing" />}
+          </SectionErrorBoundary>
+          <SectionErrorBoundary>
+            {view === 'reviews' && <AIEmployeePage employeeId="reviews" />}
+          </SectionErrorBoundary>
+          <SectionErrorBoundary>
+            {view === 'pricing' && <PricingPage />}
+          </SectionErrorBoundary>
+          <SectionErrorBoundary>
+            {view === 'settings' && <SettingsPage />}
+          </SectionErrorBoundary>
+          <SectionErrorBoundary>
+            {view === 'audit-leads' && isAdmin && <AuditLeadsPage />}
+          </SectionErrorBoundary>
+        </DashboardLayout>
+        <SpeedInsights />
+      </>
     );
   }
 
@@ -281,6 +295,7 @@ function App() {
       </main>
       <PublicFooter />
       <ChatWidget />
+      <SpeedInsights />
     </div>
   );
 }
