@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Analytics } from '@vercel/analytics/react';
 import * as Sentry from '@sentry/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App.tsx';
@@ -100,6 +101,7 @@ createRoot(document.getElementById('root')!).render(
     <Sentry.ErrorBoundary fallback={<ErrorBoundary><div>Error</div></ErrorBoundary>}>
       <ErrorBoundary>
         <App />
+        <Analytics />
       </ErrorBoundary>
     </Sentry.ErrorBoundary>
   </StrictMode>
