@@ -83,7 +83,8 @@ export default function ChatWidget() {
       });
 
       if (!response.ok) {
-        throw new Error(`Request failed (${response.status})`);
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || `Request failed (${response.status})`);
       }
 
       const data = await response.json();
@@ -106,11 +107,13 @@ export default function ChatWidget() {
       if (!open) {
         setUnread(true);
       }
-    } catch {
+    } catch (error) {
+      console.error('AI Receptionist request failed:', error);
+      const detail = error instanceof Error ? error.message : 'Unknown connection error';
       const errMsg: ChatMsg = {
         id: `e${Date.now()}`,
         sender: 'ai',
-        text: "I'm having trouble connecting right now. Please try again in a moment, or reach us directly through the contact form.",
+        text: `I’m having trouble connecting right now (${detail}). Please try again in a moment, or reach us directly through the contact form.`,
       };
       setMessages((prev) => [...prev, errMsg]);
     } finally {

@@ -39,8 +39,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseKey) {
+      return new Response(
+        JSON.stringify({ error: "AI Receptionist is not configured on the server" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     let convoId = conversationId as string | undefined;
@@ -57,22 +63,23 @@ Deno.serve(async (req: Request) => {
         .single();
 
       if (convoError) {
-        return new Response(
-          JSON.stringify({ error: "Failed to create conversation" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        console.error("Failed to create conversation:", convoError);
+        // Continue with a response even if persistence is temporarily unavailable.
+        convoId = undefined;
+      } else {
+        convoId = convo.id;
       }
-      convoId = convo.id;
     }
 
-    // Save the user's latest message
+    // Save the user's latest message only when a conversation was created.
     const lastUserMessage = messages.filter((m: ChatMessage) => m.role === "user").pop();
-    if (lastUserMessage) {
-      await supabase.from("chat_messages").insert({
+    if (lastUserMessage && convoId) {
+      const { error: messageError } = await supabase.from("chat_messages").insert({
         conversation_id: convoId,
         sender: "customer",
         text: lastUserMessage.content,
       });
+      if (messageError) console.error("Failed to save customer message:", messageError);
     }
 
     // Fetch the OpenAI API key from the app_secrets table (service role only)
@@ -122,12 +129,15 @@ Deno.serve(async (req: Request) => {
       aiReply = getFallbackResponse(lastUserMessage?.content || "");
     }
 
-    // Save the AI's reply
-    await supabase.from("chat_messages").insert({
-      conversation_id: convoId,
-      sender: "ai",
-      text: aiReply,
-    });
+    // Save the AI reply when persistence is available.
+    if (convoId) {
+      const { error: replyError } = await supabase.from("chat_messages").insert({
+        conversation_id: convoId,
+        sender: "ai",
+        text: aiReply,
+      });
+      if (replyError) console.error("Failed to save AI message:", replyError);
+    }
 
     // Try to extract lead info from the conversation
     const allUserText = messages
@@ -141,30 +151,36 @@ Deno.serve(async (req: Request) => {
       if (leadInfo.name) update.visitor_name = leadInfo.name;
       if (leadInfo.email) update.visitor_email = leadInfo.email;
       if (leadInfo.phone) update.visitor_phone = leadInfo.phone;
-      if (Object.keys(update).length > 0) {
-        await supabase.from("chat_conversations").update(update).eq("id", convoId);
+      if (Object.keys(update).length > 0 && convoId) {
+        const { error: conversationUpdateError } = await supabase
+          .from("chat_conversations")
+          .update(update)
+          .eq("id", convoId);
+        if (conversationUpdateError) console.error("Failed to update visitor details:", conversationUpdateError);
       }
 
-      // Auto-create a lead if we have at least a name + (email or phone)
-      if (leadInfo.name && (leadInfo.email || leadInfo.phone)) {
-        // Check if a lead already exists for this conversation to avoid duplicates
+      const businessId = Deno.env.get("WORKFORCEAI_BUSINESS_ID");
+      if (businessId && leadInfo.name && (leadInfo.email || leadInfo.phone)) {
         const { data: existingLead } = await supabase
           .from("leads")
           .select("id")
-          .eq("source", `AI Receptionist · Chat ${convoId}`)
+          .eq("business_id", businessId)
+          .eq("source", `AI Receptionist · Chat ${convoId || sessionId}`)
           .maybeSingle();
 
         if (!existingLead) {
-          await supabase.from("leads").insert({
+          const { error: leadError } = await supabase.from("leads").insert({
+            business_id: businessId,
             name: leadInfo.name,
             phone: leadInfo.phone || "",
             email: leadInfo.email || "",
-            service: lastUserMessage?.content || "",
-            source: `AI Receptionist · Chat ${convoId}`,
+            service: lastUserMessage?.content || "General inquiry",
+            source: `AI Receptionist · Chat ${convoId || sessionId}`,
             status: "new",
             value: 0,
             notes: `Captured automatically from website chat. Original message: ${lastUserMessage?.content || ""}`,
           });
+          if (leadError) console.error("Failed to create captured lead:", leadError);
         }
       }
     }
