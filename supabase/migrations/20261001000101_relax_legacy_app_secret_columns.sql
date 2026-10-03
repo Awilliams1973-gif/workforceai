@@ -1,0 +1,3 @@
+ALTER TABLE public.app_secrets
+  ALTER COLUMN "STRIPE_SECRET_KEY" DROP NOT NULL,
+  ALTER COLUMN "(sk_test_...)" DROP NOT NULL;

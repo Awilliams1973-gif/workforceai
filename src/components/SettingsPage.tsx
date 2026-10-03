@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAppStore } from '@/lib/store';
 import {
   Building2,
   Phone,
-  Mail,
   Clock,
   Save,
   CheckCircle2,
@@ -38,7 +38,10 @@ const emptyForm = {
 };
 
 export default function SettingsPage() {
+  const { user } = useAppStore();
+  const userId = user?.id;
   const [form, setForm] = useState(emptyForm);
+  const [businessId, setBusinessId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -47,9 +50,30 @@ export default function SettingsPage() {
   const loadSettings = useCallback(async () => {
     setLoading(true);
     setError(null);
+    if (!userId) {
+      setError('Please sign in to load your business settings.');
+      setLoading(false);
+      return;
+    }
+
+    const { data: membership, error: membershipError } = await supabase
+      .from('user_businesses')
+      .select('business_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (membershipError || !membership) {
+      console.error('Business lookup error:', membershipError);
+      setError('Unable to load your business. Please try again.');
+      setLoading(false);
+      return;
+    }
+
+    setBusinessId(membership.business_id);
     const { data, error: fetchError } = await supabase
       .from('business_settings')
       .select('*')
+      .eq('business_id', membership.business_id)
       .maybeSingle();
 
     if (fetchError) {
@@ -68,7 +92,7 @@ export default function SettingsPage() {
       });
     }
     setLoading(false);
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     loadSettings();
@@ -84,17 +108,18 @@ export default function SettingsPage() {
     setError(null);
     setSaved(false);
 
-    const { data: existing } = await supabase
-      .from('business_settings')
-      .select('id')
-      .maybeSingle();
+    if (!businessId) {
+      setError('Unable to load your business. Please try again.');
+      setSaving(false);
+      return;
+    }
 
     const { error: upsertError } = await supabase
       .from('business_settings')
       .upsert({
-        id: existing?.id,
+        business_id: businessId,
         ...form,
-      });
+      }, { onConflict: 'business_id' });
 
     if (upsertError) {
       setError('Unable to save settings. Please try again.');

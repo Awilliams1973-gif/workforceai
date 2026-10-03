@@ -32,6 +32,8 @@ const statusStyles: Record<AppointmentStatus, string> = {
 
 export default function AppointmentsPage() {
   const { user } = useAppStore();
+  const userId = user?.id;
+  const [businessId, setBusinessId] = useState<string | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,24 +45,30 @@ export default function AppointmentsPage() {
     setLoading(true);
     setError(null);
     try {
-      // Get user's business_id
-      const { data: userBiz, error: bizError } = await supabase
+      if (!userId) {
+        setError('Please sign in to load your appointments.');
+        setLoading(false);
+        return;
+      }
+
+      const { data: membership, error: membershipError } = await supabase
         .from('user_businesses')
         .select('business_id')
-        .eq('user_id', user?.id || '')
+        .eq('user_id', userId)
         .maybeSingle();
-      
-      if (bizError || !userBiz) {
+
+      if (membershipError || !membership) {
+        console.error('Business lookup error:', membershipError);
         setError('Unable to load your business. Please try again.');
         setLoading(false);
         return;
       }
 
-      // Fetch appointments for this business
+      setBusinessId(membership.business_id);
       const { data, error: fetchError } = await supabase
         .from('appointments')
         .select('*')
-        .eq('business_id', userBiz.business_id)
+        .eq('business_id', membership.business_id)
         .order('created_at', { ascending: false });
 
       if (fetchError) {
@@ -74,7 +82,7 @@ export default function AppointmentsPage() {
       setError('Unable to load appointments. Please try again.');
     }
     setLoading(false);
-  }, [user?.id]);
+  }, [userId]);
 
   useEffect(() => {
     fetchAppointments();
@@ -95,18 +103,11 @@ export default function AppointmentsPage() {
 
   const addAppointment = async (appt: Omit<Appointment, 'id' | 'created_at' | 'user_id'>) => {
     try {
-      // Get user's business_id
-      const { data: userBiz } = await supabase
-        .from('user_businesses')
-        .select('business_id')
-        .eq('user_id', user?.id || '')
-        .maybeSingle();
-      
-      if (!userBiz) return;
+      if (!user || !businessId) return;
 
       const { data, error: insertError } = await supabase
         .from('appointments')
-        .insert({ ...appt, business_id: userBiz.business_id, user_id: user?.id })
+        .insert({ ...appt, business_id: businessId, user_id: user.id })
         .select('*')
         .single();
       if (!insertError && data) {

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../lib/supabase';
 import { 
   validateInput, 
   CreateLeadSchema, 
@@ -6,8 +6,8 @@ import {
   CreateAppointmentSchema,
   UpdateAppointmentSchema,
   AddMessageSchema,
-} from './validation';
-import type { Lead, Appointment, Conversation } from './types';
+} from '../lib/validation';
+import type { Lead, Appointment, Conversation } from '../lib/types';
 import * as Sentry from '@sentry/react';
 
 // ============ ERROR HANDLING ============

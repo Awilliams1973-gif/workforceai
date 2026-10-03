@@ -1,10 +1,10 @@
 /*
-# Create business_settings table
+# Create business-scoped business_settings table
 
 1. New Tables
 - `business_settings`
   - `id` (uuid, primary key)
-  - `user_id` (uuid, not null, defaults to auth.uid(), references auth.users, unique — one settings row per business)
+  - `business_id` (uuid, not null, references businesses, unique — one settings row per business)
   - `business_name` (text, not null, default '')
   - `industry` (text, not null, default '')
   - `phone` (text, not null, default '')
@@ -18,17 +18,16 @@
   - `updated_at` (timestamptz)
 
 2. Security
-- RLS enabled, owner-scoped CRUD (auth.uid() = user_id).
-- user_id defaults to auth.uid() so inserts from the client work without passing it.
+- RLS enabled, membership-scoped CRUD through user_businesses.
 
 3. Notes
-- Unique constraint on user_id ensures one settings row per business.
+- Unique constraint on business_id ensures one settings row per business.
 - updated_at auto-maintained via trigger.
 */
 
 CREATE TABLE IF NOT EXISTS public.business_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+  business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
   business_name text NOT NULL DEFAULT '',
   industry text NOT NULL DEFAULT '',
   phone text NOT NULL DEFAULT '',
@@ -44,23 +43,38 @@ CREATE TABLE IF NOT EXISTS public.business_settings (
 
 ALTER TABLE public.business_settings ENABLE ROW LEVEL SECURITY;
 
-CREATE UNIQUE INDEX IF NOT EXISTS business_settings_user_id_idx ON public.business_settings (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS business_settings_business_id_idx ON public.business_settings (business_id);
 
 DROP POLICY IF EXISTS "select_own_business_settings" ON public.business_settings;
 CREATE POLICY "select_own_business_settings" ON public.business_settings FOR SELECT
-  TO authenticated USING (auth.uid() = user_id);
+  TO authenticated USING (EXISTS (
+    SELECT 1 FROM public.user_businesses ub
+    WHERE ub.user_id = auth.uid() AND ub.business_id = business_settings.business_id
+  ));
 
 DROP POLICY IF EXISTS "insert_own_business_settings" ON public.business_settings;
 CREATE POLICY "insert_own_business_settings" ON public.business_settings FOR INSERT
-  TO authenticated WITH CHECK (auth.uid() = user_id);
+  TO authenticated WITH CHECK (EXISTS (
+    SELECT 1 FROM public.user_businesses ub
+    WHERE ub.user_id = auth.uid() AND ub.business_id = business_settings.business_id
+  ));
 
 DROP POLICY IF EXISTS "update_own_business_settings" ON public.business_settings;
 CREATE POLICY "update_own_business_settings" ON public.business_settings FOR UPDATE
-  TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  TO authenticated USING (EXISTS (
+    SELECT 1 FROM public.user_businesses ub
+    WHERE ub.user_id = auth.uid() AND ub.business_id = business_settings.business_id
+  )) WITH CHECK (EXISTS (
+    SELECT 1 FROM public.user_businesses ub
+    WHERE ub.user_id = auth.uid() AND ub.business_id = business_settings.business_id
+  ));
 
 DROP POLICY IF EXISTS "delete_own_business_settings" ON public.business_settings;
 CREATE POLICY "delete_own_business_settings" ON public.business_settings FOR DELETE
-  TO authenticated USING (auth.uid() = user_id);
+  TO authenticated USING (EXISTS (
+    SELECT 1 FROM public.user_businesses ub
+    WHERE ub.user_id = auth.uid() AND ub.business_id = business_settings.business_id
+  ));
 
 CREATE OR REPLACE FUNCTION public.update_business_settings_updated_at()
 RETURNS trigger

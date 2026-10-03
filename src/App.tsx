@@ -1,3 +1,6 @@
+git add .
+git commit -m "Remove Pricing page routing (coming in v1.1)"
+git push origin main
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/lib/store';
@@ -38,7 +41,6 @@ const dashboardViews = [
   'appointments-assistant',
   'marketing',
   'reviews',
-  'pricing',
   'settings',
   'audit-leads',
 ];
@@ -260,9 +262,7 @@ function App() {
         <SectionErrorBoundary>
           {view === 'reviews' && <AIEmployeePage employeeId="reviews" />}
         </SectionErrorBoundary>
-        <SectionErrorBoundary>
-          {view === 'pricing' && <PricingPage />}
-        </SectionErrorBoundary>
+
         <SectionErrorBoundary>
           {view === 'settings' && <SettingsPage />}
         </SectionErrorBoundary>

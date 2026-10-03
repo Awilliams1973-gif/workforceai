@@ -7,34 +7,31 @@ import App from './App.tsx';
 import './index.css';
 
 // PII Redaction function
-const redactPII = (data: any): any => {
-  if (!data) return data;
-  
+const redactPII = <T,>(data: T): T => {
+  if (typeof data === 'string') {
+    return data
+      .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL_REDACTED]')
+      .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE_REDACTED]') as T;
+  }
+  if (data === null || typeof data !== 'object') return data;
+
+  if (Array.isArray(data)) {
+    return data.map(item => redactPII(item)) as T;
+  }
+
   // List of PII fields to redact
   const piiFields = ['email', 'phone', 'password', 'creditCard', 'ssn', 'name', 'address'];
-  
-  // Redact object values
-  if (typeof data === 'object') {
-    const redacted = Array.isArray(data) ? [...data] : { ...data };
-    
-    for (const key in redacted) {
-      if (piiFields.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
-        redacted[key] = '[REDACTED]';
-      } else if (typeof redacted[key] === 'object') {
-        redacted[key] = redactPII(redacted[key]);
-      } else if (typeof redacted[key] === 'string') {
-        // Redact email patterns
-        if (redacted[key].match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)) {
-          redacted[key] = '[EMAIL_REDACTED]';
-        }
-        // Redact phone patterns (XXX-XXX-XXXX or similar)
-        if (redacted[key].match(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/)) {
-          redacted[key] = '[PHONE_REDACTED]';
-        }
-      }
+
+  const redacted: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (piiFields.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
+      redacted[key] = '[REDACTED]';
+    } else {
+      redacted[key] = redactPII(value);
     }
-    return redacted;
   }
+
+  return redacted as T;
   
   return data;
 };
@@ -65,10 +62,10 @@ if (import.meta.env.VITE_SENTRY_DSN) {
       }
       
       // Redact exception data
-      if (event.exception) {
-        event.exception = event.exception.map(ex => ({
-          ...ex,
-          value: ex.value?.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]') || ex.value,
+      if (event.exception?.values) {
+        event.exception.values = event.exception.values.map(exception => ({
+          ...exception,
+          value: exception.value?.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]') || exception.value,
         }));
       }
       

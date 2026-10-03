@@ -45,7 +45,11 @@ export class SectionErrorBoundary extends Component<Props, State> {
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null, errorCount: state => state + 1 });
+    this.setState(state => ({
+      hasError: false,
+      error: null,
+      errorCount: state.errorCount + 1,
+    }));
   };
 
   render() {

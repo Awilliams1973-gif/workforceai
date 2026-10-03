@@ -49,7 +49,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Fetch Stripe secret key from app_secrets
+    // Prefer the runtime secret environment and fall back to the DB row.
+    const runtimeStripeKey = Deno.env.get("STRIPE_SECRET_KEY")?.trim();
     const serviceClient = createClient(
       supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -59,16 +60,21 @@ Deno.serve(async (req: Request) => {
       .select("key_value")
       .eq("key_name", "STRIPE_SECRET_KEY")
       .maybeSingle();
+    const stripeKey = runtimeStripeKey || secretRow?.key_value?.trim();
 
-    if (!secretRow?.key_value) {
+    if (!stripeKey) {
       return new Response(
         JSON.stringify({ error: "Stripe not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const stripeKey = secretRow.key_value;
-    const origin = req.headers.get("origin") || "https://cncccdafbcfzldxpugrw.supabase.co";
+    const origin = req.headers.get("origin");
+    if (!origin) {
+      return new Response(
+        JSON.stringify({ error: "Missing application origin" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const params = new URLSearchParams({
       "line_items[0][price_data][currency]": "usd",
@@ -82,6 +88,7 @@ Deno.serve(async (req: Request) => {
       "cancel_url": `${origin}/dashboard?checkout=cancelled`,
       "client_reference_id": user.id,
       "metadata[plan_id]": planId,
+      "metadata[user_id]": user.id,
     });
     if (user.email) {
       params.set("customer_email", user.email);

@@ -34,7 +34,7 @@ const navItems: { id: View; label: string; icon: typeof Headset; group?: string;
   { id: 'reviews', label: 'AI Reviews', icon: Star, group: 'AI Employees' },
   { id: 'audit-leads', label: 'Audit Leads', icon: ClipboardList, group: 'Admin', adminOnly: true },
   { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen, group: 'Settings' },
-  { id: 'pricing', label: 'Plans & Billing', icon: CreditCard, group: 'Settings' },
+  // { id: 'pricing', label: 'Plans & Billing', icon: CreditCard, group: 'Settings' }, // TODO: Add Stripe setup
   { id: 'settings', label: 'Business Settings', icon: Settings, group: 'Settings' },
 ];
 

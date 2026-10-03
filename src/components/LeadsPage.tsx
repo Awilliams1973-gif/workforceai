@@ -32,6 +32,8 @@ const statusStyles: Record<LeadStatus, string> = {
 
 export default function LeadsPage() {
   const { user } = useAppStore();
+  const userId = user?.id;
+  const [businessId, setBusinessId] = useState<string | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,24 +47,30 @@ export default function LeadsPage() {
     setLoading(true);
     setError(null);
     try {
-      // First, get user's business_id from user_businesses
-      const { data: userBiz, error: bizError } = await supabase
+      if (!userId) {
+        setError('Please sign in to load your leads.');
+        setLoading(false);
+        return;
+      }
+
+      const { data: membership, error: membershipError } = await supabase
         .from('user_businesses')
         .select('business_id')
-        .eq('user_id', user?.id || '')
+        .eq('user_id', userId)
         .maybeSingle();
-      
-      if (bizError || !userBiz) {
+
+      if (membershipError || !membership) {
+        console.error('Business lookup error:', membershipError);
         setError('Unable to load your business. Please try again.');
         setLoading(false);
         return;
       }
 
-      // Now fetch leads for this business (RLS will filter automatically)
+      setBusinessId(membership.business_id);
       const { data, error: fetchError } = await supabase
         .from('leads')
         .select('*')
-        .eq('business_id', userBiz.business_id)
+        .eq('business_id', membership.business_id)
         .order('created_at', { ascending: false });
 
       if (fetchError) {
@@ -76,7 +84,7 @@ export default function LeadsPage() {
       setError('Unable to load leads. Please try again.');
     }
     setLoading(false);
-  }, [user?.id]);
+  }, [userId]);
 
   useEffect(() => {
     fetchLeads();
@@ -114,10 +122,14 @@ export default function LeadsPage() {
   };
 
   const addLead = async (lead: Omit<Lead, 'id' | 'created_at' | 'user_id'>) => {
+    if (!businessId) return;
+
     const { data, error: insertError } = await supabase
       .from('leads')
       .insert({
         ...lead,
+        business_id: businessId,
+        created_by: userId,
         value: Number(lead.value),
       })
       .select('*')
