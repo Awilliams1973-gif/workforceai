@@ -119,6 +119,8 @@ Deno.serve(async (req: Request) => {
       });
 
       if (!openaiResponse.ok) {
+        const errorText = await openaiResponse.text();
+        console.error(`OpenAI request failed (${openaiResponse.status}):`, errorText.slice(0, 1000));
         aiReply = getFallbackResponse(lastUserMessage?.content || "");
       } else {
         const openaiData = await openaiResponse.json();
