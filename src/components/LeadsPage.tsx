@@ -119,7 +119,7 @@ export default function LeadsPage() {
     }
   };
 
-  const addLead = async (lead: Omit<Lead, 'id' | 'created_at' | 'user_id'>) => {
+  const addLead = async (lead: Omit<Lead, 'id' | 'created_at' | 'user_id' | 'next_follow_up'>) => {
     setError(null);
     try {
       if (!user?.id) {
@@ -394,7 +394,7 @@ function LeadDrawer({ lead, onClose, onUpdateStatus, onDelete }: {
 
 function AddLeadForm({ onClose, onAdd }: {
   onClose: () => void;
-  onAdd: (lead: Omit<Lead, 'id' | 'created_at' | 'user_id'>) => void;
+  onAdd: (lead: Omit<Lead, 'id' | 'created_at' | 'user_id' | 'next_follow_up'>) => void;
 }) {
   const [form, setForm] = useState({
     name: '',
@@ -405,7 +405,6 @@ function AddLeadForm({ onClose, onAdd }: {
     status: 'new' as LeadStatus,
     value: '',
     notes: '',
-    next_follow_up: '',
   });
 
   const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
@@ -453,10 +452,6 @@ function AddLeadForm({ onClose, onAdd }: {
               <label className="label">Estimated value ($)</label>
               <input className="input" type="number" min="0" value={form.value} onChange={(e) => update('value', e.target.value)} placeholder="450" />
             </div>
-          </div>
-          <div>
-            <label className="label">Next follow-up</label>
-            <input className="input" value={form.next_follow_up} onChange={(e) => update('next_follow_up', e.target.value)} placeholder="Today 2:00 PM" />
           </div>
           <div>
             <label className="label">Notes</label>
