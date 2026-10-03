@@ -13,7 +13,6 @@ import {
   CalendarCheck,
   Megaphone,
   Star,
-  CreditCard,
   Settings,
   ArrowLeft,
   X,

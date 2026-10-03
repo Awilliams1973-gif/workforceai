@@ -17,7 +17,7 @@ import ReceptionistPage from '@/components/ReceptionistPage';
 import ConversationsPage from '@/components/ConversationsPage';
 import KnowledgePage from '@/components/KnowledgePage';
 import AIEmployeePage from '@/components/AIEmployeePage';
-import PricingPage from '@/components/PricingPage';
+
 import SettingsPage from '@/components/SettingsPage';
 import AuditLeadsPage from '@/components/AuditLeadsPage';
 import ChatWidget from '@/components/ChatWidget';
