@@ -102,20 +102,51 @@ export default function AppointmentsPage() {
   };
 
   const addAppointment = async (appt: Omit<Appointment, 'id' | 'created_at' | 'user_id'>) => {
+    setError(null);
     try {
-      if (!user || !businessId) return;
+      if (!user?.id) {
+        setError('Please sign in to add an appointment.');
+        return;
+      }
+
+      let currentBusinessId = businessId;
+      if (!currentBusinessId) {
+        const { data: membership, error: membershipError } = await supabase
+          .from('user_businesses')
+          .select('business_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (membershipError || !membership) {
+          console.error('Business lookup error:', membershipError);
+          setError('Unable to load your business. Please try again.');
+          return;
+        }
+        currentBusinessId = membership.business_id;
+        setBusinessId(currentBusinessId);
+      }
 
       const { data, error: insertError } = await supabase
         .from('appointments')
-        .insert({ ...appt, business_id: businessId, user_id: user.id })
+        .insert({
+          ...appt,
+          business_id: currentBusinessId,
+          user_id: user.id,
+        })
         .select('*')
         .single();
-      if (!insertError && data) {
-        setAppointments((prev) => [data as Appointment, ...prev]);
-        setShowAddForm(false);
+
+      if (insertError || !data) {
+        console.error('Appointment insert error:', insertError);
+        setError(insertError?.message || 'Unable to add appointment. Please try again.');
+        return;
       }
+
+      setAppointments((prev) => [data as Appointment, ...prev]);
+      setShowAddForm(false);
     } catch (err) {
       console.error('Add appointment error:', err);
+      setError(err instanceof Error ? err.message : 'Unable to add appointment. Please try again.');
     }
   };
 
@@ -347,11 +378,11 @@ function AddAppointmentForm({ onClose, onAdd }: {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label">Date <span className="text-red-500">*</span></label>
-              <input className="input" value={form.date} onChange={(e) => update('date', e.target.value)} placeholder="Sep 5" />
+              <input className="input" type="date" value={form.date} onChange={(e) => update('date', e.target.value)} />
             </div>
             <div>
               <label className="label">Time <span className="text-red-500">*</span></label>
-              <input className="input" value={form.time} onChange={(e) => update('time', e.target.value)} placeholder="2:30 PM" />
+              <input className="input" type="time" value={form.time} onChange={(e) => update('time', e.target.value)} />
             </div>
           </div>
           <div>
