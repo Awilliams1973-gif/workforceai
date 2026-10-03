@@ -17,7 +17,7 @@ import ReceptionistPage from '@/components/ReceptionistPage';
 import ConversationsPage from '@/components/ConversationsPage';
 import KnowledgePage from '@/components/KnowledgePage';
 import AIEmployeePage from '@/components/AIEmployeePage';
-
+import PricingPage from '@/components/PricingPage';
 import SettingsPage from '@/components/SettingsPage';
 import AuditLeadsPage from '@/components/AuditLeadsPage';
 import ChatWidget from '@/components/ChatWidget';
@@ -263,6 +263,9 @@ function App() {
           {view === 'reviews' && <AIEmployeePage employeeId="reviews" />}
         </SectionErrorBoundary>
 
+        <SectionErrorBoundary>
+          {view === 'pricing' && <PricingPage />}
+        </SectionErrorBoundary>
         <SectionErrorBoundary>
           {view === 'settings' && <SettingsPage />}
         </SectionErrorBoundary>
