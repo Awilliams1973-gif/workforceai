@@ -1,6 +1,3 @@
-git add .
-git commit -m "Remove Pricing page routing (coming in v1.1)"
-git push origin main
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/lib/store';
