@@ -76,13 +76,10 @@ export default function PricingPage() {
             </div>
 
             <button
-              className={`mt-6 w-full rounded-lg px-4 py-2 font-semibold transition-colors ${
-                plan.highlighted
-                  ? 'bg-teal-600 text-white hover:bg-teal-700'
-                  : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
-              }`}
+              disabled
+              className="mt-6 w-full rounded-lg px-4 py-2 font-semibold transition-colors opacity-50 cursor-not-allowed bg-slate-100 text-slate-900"
             >
-              Get started
+              Coming soon
             </button>
 
             <div className="mt-6 space-y-3 border-t border-slate-200 pt-6">
@@ -100,7 +97,7 @@ export default function PricingPage() {
       <div className="rounded-xl bg-blue-50 p-6 text-center">
         <h3 className="text-lg font-semibold text-blue-900">Need a custom plan?</h3>
         <p className="mt-1 text-blue-700">Contact our sales team for enterprise solutions and custom pricing.</p>
-        <button className="mt-4 rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white hover:bg-blue-700">
+        <button disabled className="mt-4 rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white opacity-50 cursor-not-allowed">
           Contact sales
         </button>
       </div>
