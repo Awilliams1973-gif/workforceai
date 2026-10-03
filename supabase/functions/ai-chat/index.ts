@@ -82,15 +82,15 @@ Deno.serve(async (req: Request) => {
       if (messageError) console.error("Failed to save customer message:", messageError);
     }
 
-    // Fetch the OpenAI API key from the app_secrets table (service role only)
-    let openaiKey: string | null = null;
-    const { data: secretRow } = await supabase
-      .from("app_secrets")
-      .select("key_value")
-      .eq("key_name", "OPENAI_API_KEY")
-      .maybeSingle();
-    if (secretRow?.key_value) {
-      openaiKey = secretRow.key_value;
+    // Prefer the Edge Function secret; use the database row only as a migration fallback.
+    let openaiKey = Deno.env.get("OPENAI_API_KEY")?.trim() || null;
+    if (!openaiKey) {
+      const { data: secretRow } = await supabase
+        .from("app_secrets")
+        .select("key_value")
+        .eq("key_name", "OPENAI_API_KEY")
+        .maybeSingle();
+      openaiKey = secretRow?.key_value?.trim() || null;
     }
 
     let aiReply: string;
