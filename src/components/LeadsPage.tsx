@@ -33,7 +33,6 @@ const statusStyles: Record<LeadStatus, string> = {
 export default function LeadsPage() {
   const { user } = useAppStore();
   const userId = user?.id;
-  const [businessId, setBusinessId] = useState<string | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +65,6 @@ export default function LeadsPage() {
         return;
       }
 
-      setBusinessId(membership.business_id);
       const { data, error: fetchError } = await supabase
         .from('leads')
         .select('*')
@@ -122,21 +120,46 @@ export default function LeadsPage() {
   };
 
   const addLead = async (lead: Omit<Lead, 'id' | 'created_at' | 'user_id'>) => {
-    if (!businessId) return;
+    setError(null);
+    try {
+      if (!user?.id) {
+        setError('Please sign in to add a lead.');
+        return;
+      }
 
-    const { data, error: insertError } = await supabase
-      .from('leads')
-      .insert({
-        ...lead,
-        business_id: businessId,
-        created_by: userId,
-        value: Number(lead.value),
-      })
-      .select('*')
-      .single();
-    if (!insertError && data) {
+      const { data: userBiz, error: businessError } = await supabase
+        .from('user_businesses')
+        .select('business_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (businessError || !userBiz) {
+        console.error('Business lookup error:', businessError);
+        setError('Unable to load your business. Please try again.');
+        return;
+      }
+
+      const { data, error: insertError } = await supabase
+        .from('leads')
+        .insert({
+          ...lead,
+          business_id: userBiz.business_id,
+          created_by: user.id,
+          value: Number(lead.value),
+        })
+        .select('*')
+        .single();
+      if (insertError || !data) {
+        console.error('Insert error:', insertError ?? 'No lead returned after insert.');
+        setError('Unable to add lead. Please try again.');
+        return;
+      }
+
       setLeads((prev) => [data as Lead, ...prev]);
       setShowAddForm(false);
+    } catch (err) {
+      console.error('Add lead error:', err);
+      setError('Unable to add lead. Please try again.');
     }
   };
 
