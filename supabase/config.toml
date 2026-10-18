@@ -1,6 +1,9 @@
 [functions.ai-chat]
 verify_jwt = false
 
+[functions.audit-submit]
+verify_jwt = false
+
 [functions.stripe-checkout]
 verify_jwt = true
 

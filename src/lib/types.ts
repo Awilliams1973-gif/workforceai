@@ -33,6 +33,7 @@ export type Lead = {
 };
 
 export type AppointmentStatus =
+  | 'requested'
   | 'scheduled'
   | 'confirmed'
   | 'completed'

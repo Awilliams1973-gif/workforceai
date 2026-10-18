@@ -202,7 +202,11 @@ export default function ConversationsPage() {
       {/* Active conversation */}
       {active ? (
         <div className={(showListMobile ? 'hidden ' : 'flex ') + 'flex-1 flex-col bg-slate-50 sm:flex'}>
-          {/* Header */}
+          {error && (
+            <div className="border-b border-red-200 bg-red-50 px-5 py-2 text-xs text-red-700">
+              {error}
+            </div>
+          )}
           <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3">
             <div className="flex items-center gap-3">
               <button

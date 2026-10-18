@@ -1,16 +1,11 @@
-import { useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { plans, demoEmployees } from '@/lib/demo-data';
-import { startCheckout } from '@/lib/stripe';
-import { supabase } from '@/lib/supabase';
-import { Loader2 } from 'lucide-react';
 import {
   Headset,
   Handshake,
   CalendarCheck,
   Megaphone,
   Star,
-  Phone,
   MessageSquare,
   Clock,
   TrendingUp,
@@ -63,7 +58,7 @@ const faqs = [
   },
   {
     q: 'How much does it cost?',
-    a: 'Start free with the AI Receptionist on your website. Paid plans begin at $49/month for solo owners and scale up for multi-location operations. See pricing below.',
+    a: 'You can get started free while we finalize the pricing plans. Once billing is live, we’ll share the right option for your business size and needs.',
   },
   {
     q: 'Can I cancel anytime?',
@@ -72,28 +67,7 @@ const faqs = [
 ];
 
 export default function LandingPage() {
-  const { setView, user } = useAppStore();
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-
-  async function handlePlanClick(planId: string, price: number) {
-    if (price === 0) {
-      setView('auth');
-      return;
-    }
-    if (!user) {
-      setView('auth');
-      return;
-    }
-    setCheckoutError(null);
-    setLoadingPlan(planId);
-    try {
-      await startCheckout(planId);
-    } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : 'Something went wrong');
-      setLoadingPlan(null);
-    }
-  }
+  const { setView } = useAppStore();
 
   return (
     <div className="bg-white">
@@ -132,12 +106,12 @@ export default function LandingPage() {
                 appointments, follow up with leads, and request reviews — 24 hours a day, 7 days a
                 week.
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <button onClick={() => setView('audit')} className="btn-primary text-base">
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-start">
+                <button type="button" onClick={() => setView('audit')} className="btn-primary w-full text-base sm:w-auto">
                   <Sparkles className="h-5 w-5" />
                   Get Your Free AI Audit
                 </button>
-                <button onClick={() => setView('auth')} className="btn-secondary text-base">
+                <button type="button" onClick={() => setView('auth')} className="btn-secondary w-full text-base sm:w-auto">
                   See Live Demo
                   <ArrowRight className="h-4 w-4" />
                 </button>
@@ -402,14 +376,9 @@ export default function LandingPage() {
               Simple, honest pricing
             </h2>
             <p className="mt-4 text-lg text-slate-600">
-              Start free. Upgrade when you're ready. Cancel anytime.
+              Plans are coming soon. Start free and we’ll unlock billing when checkout is ready.
             </p>
           </div>
-          {checkoutError && (
-            <div className="mx-auto mt-6 max-w-md rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-700">
-              {checkoutError}
-            </div>
-          )}
           <div className="mt-12 grid gap-6 lg:grid-cols-4">
             {plans.map((plan) => (
               <div
@@ -436,12 +405,11 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <button
-                  onClick={() => handlePlanClick(plan.id, plan.price)}
-                  disabled={loadingPlan !== null}
-                  className={`mt-6 flex w-full items-center justify-center gap-2 ${plan.highlight ? 'btn-primary' : 'btn-secondary'} ${loadingPlan === plan.id ? 'opacity-60' : ''}`}
+                  type="button"
+                  disabled
+                  className="mt-6 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-slate-100 px-4 py-2.5 font-semibold text-slate-500 opacity-70"
                 >
-                  {loadingPlan === plan.id && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {plan.cta}
+                  Coming soon
                 </button>
               </div>
             ))}
@@ -492,15 +460,15 @@ export default function LandingPage() {
                 missing and how WorkforceAI can capture them.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <button onClick={() => setView('audit')} className="btn-primary text-base">
+                <button type="button" onClick={() => setView('audit')} className="btn-primary w-full text-base sm:w-auto">
                   <Sparkles className="h-5 w-5" />
                   Get Your Free AI Audit
                 </button>
-                <button onClick={() => setView('auth')} className="btn-secondary text-base">
-                  View Pricing
+                <button type="button" onClick={() => setView('auth')} className="btn-secondary w-full text-base sm:w-auto">
+                  Get Started
                 </button>
               </div>
-              <div className="mt-6 flex items-center justify-center gap-6 text-sm text-slate-400">
+              <div className="mt-6 flex flex-col items-center justify-center gap-3 text-sm text-slate-400 sm:flex-row sm:gap-6">
                 <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /> No credit card</span>
                 <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4" /> 2-minute setup</span>
               </div>

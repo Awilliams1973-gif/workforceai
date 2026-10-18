@@ -32,8 +32,6 @@ const redactPII = <T,>(data: T): T => {
   }
 
   return redacted as T;
-  
-  return data;
 };
 
 // Initialize Sentry if DSN is provided
@@ -73,9 +71,19 @@ if (import.meta.env.VITE_SENTRY_DSN) {
       if (event.request) {
         event.request = {
           ...event.request,
-          url: event.request.url?.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]') || event.request.url,
+          url: event.request.url
+            ?.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]')
+            .replace(/([?&#](?:token|password|key|access_token|refresh_token)=)[^&#]*/gi, '$1***') || event.request.url,
           headers: redactPII(event.request.headers),
         };
+        delete event.request.cookies;
+        if (event.request.headers) {
+          for (const header of Object.keys(event.request.headers)) {
+            if (/^(authorization|cookie|apikey|x-client-info)$/i.test(header)) {
+              event.request.headers[header] = '[REDACTED]';
+            }
+          }
+        }
       }
       
       // Redact extra data

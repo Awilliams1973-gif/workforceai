@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
-import { expect, afterEach, vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import type { ReactNode } from 'react';
 
 // Cleanup after each test
 afterEach(() => {
@@ -9,7 +10,7 @@ afterEach(() => {
 
 // Mock Sentry
 vi.mock('@sentry/react', () => ({
-  ErrorBoundary: ({ children }: any) => children,
+  ErrorBoundary: ({ children }: { children: ReactNode }) => children,
   init: vi.fn(),
   captureException: vi.fn(),
   captureMessage: vi.fn(),

@@ -1,5 +1,21 @@
 import { z } from 'zod';
-import type { Lead, Appointment, Conversation, ConversationMessage, KnowledgeItem } from './types';
+
+// ============ AUDIT SCHEMAS ============
+
+export const AuditSubmissionSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(255),
+  businessName: z.string().trim().min(1, 'Business name is required').max(255),
+  email: z.string().trim().email('Invalid email address'),
+  phone: z.string().trim().max(30).optional().default(''),
+  website: z.string().trim().max(255).optional().default(''),
+  industry: z.string().trim().min(1, 'Industry is required').max(100),
+  monthlyInquiries: z.number().int().min(1, 'Enter at least one inquiry').max(1000000),
+  unansweredInquiries: z.number().int().min(0).max(1000000),
+  averageCustomerValue: z.number().finite().min(0).max(10000000),
+}).refine((data) => data.unansweredInquiries <= data.monthlyInquiries, {
+  message: 'Unanswered inquiries cannot exceed total inquiries',
+  path: ['unansweredInquiries'],
+});
 
 // ============ LEAD SCHEMAS ============
 
@@ -29,7 +45,7 @@ export const AppointmentSchema = z.object({
   service: z.string().min(1, 'Service required').max(255),
   date: z.string().date('Invalid date format'),
   time: z.string().regex(/^\d{2}:\d{2}$/, 'Time must be HH:MM format'),
-  status: z.enum(['scheduled', 'confirmed', 'completed', 'rescheduled', 'cancelled', 'no-show']),
+  status: z.enum(['requested', 'scheduled', 'confirmed', 'completed', 'rescheduled', 'cancelled', 'no-show']),
   notes: z.string().max(2000).optional().default(''),
 });
 

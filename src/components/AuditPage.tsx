@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '@/lib/store';
-import { supabase } from '@/lib/supabase';
+import TurnstileWidget from '@/components/TurnstileWidget';
+import { AuditSubmissionSchema } from '@/lib/validation';
 import {
   Sparkles,
   TrendingUp,
@@ -31,6 +32,7 @@ export default function AuditPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -47,8 +49,18 @@ export default function AuditPage() {
   const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const canProceed = () => {
-    if (step === 1) return form.name && form.businessName && form.email && form.industry;
-    if (step === 2) return form.monthlyInquiries && form.unansweredInquiries && form.averageCustomerValue;
+    if (step === 1) return Boolean(form.name.trim() && form.businessName.trim() && form.email.trim() && form.industry);
+    if (step === 2) return AuditSubmissionSchema.safeParse({
+      name: form.name,
+      businessName: form.businessName,
+      email: form.email,
+      phone: form.phone,
+      website: form.website,
+      industry: form.industry,
+      monthlyInquiries: Number(form.monthlyInquiries),
+      unansweredInquiries: Number(form.unansweredInquiries),
+      averageCustomerValue: Number(form.averageCustomerValue),
+    }).success;
     return false;
   };
 
@@ -60,23 +72,31 @@ export default function AuditPage() {
   })();
 
   const handleSubmit = async () => {
+    const validation = AuditSubmissionSchema.safeParse({
+      ...form,
+      monthlyInquiries: Number(form.monthlyInquiries),
+      unansweredInquiries: Number(form.unansweredInquiries),
+      averageCustomerValue: Number(form.averageCustomerValue),
+    });
+    if (!validation.success) {
+      setError(validation.error.errors[0]?.message || 'Please check your answers.');
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
-      const { error: insertError } = await supabase.from('business_audit_submissions').insert({
-        name: form.name,
-        business_name: form.businessName,
-        email: form.email,
-        phone: form.phone || null,
-        website: form.website || null,
-        industry: form.industry,
-        monthly_inquiries: parseInt(form.monthlyInquiries) || 0,
-        unanswered_inquiries: parseInt(form.unansweredInquiries) || 0,
-        average_customer_value: parseFloat(form.averageCustomerValue) || 0,
-        estimated_opportunity: estimatedOpportunity,
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-submit`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ submission: validation.data, turnstileToken }),
       });
-
-      if (insertError) throw insertError;
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || 'Audit submission failed');
       setSubmitted(true);
     } catch {
       setError('Something went wrong submitting your audit. Please try again.');
@@ -110,8 +130,8 @@ export default function AuditPage() {
             See the Product in Action
             <ArrowRight className="h-4 w-4" />
           </button>
-          <button onClick={() => setView('pricing')} className="btn-secondary text-base">
-            View Pricing
+          <button onClick={() => setView('auth')} className="btn-secondary text-base">
+            Get Started
           </button>
         </div>
       </div>
@@ -208,6 +228,8 @@ export default function AuditPage() {
                 </div>
                 <p className="mt-1.5 text-xs text-slate-500">What's a typical job worth to you?</p>
               </div>
+
+              <TurnstileWidget onToken={setTurnstileToken} />
 
               {canProceed() && (
                 <div className="rounded-xl bg-teal-50 p-4 ring-1 ring-inset ring-teal-200">

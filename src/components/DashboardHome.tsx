@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/lib/store';
 import { demoEmployees } from '@/lib/demo-data';
+import OnboardingChecklist from '@/components/OnboardingChecklist';
 import {
   Users,
   CalendarDays,
@@ -14,7 +15,6 @@ import {
   Megaphone,
   Star,
   CheckCircle2,
-  Phone,
   DollarSign,
   Inbox,
 } from 'lucide-react';
@@ -60,6 +60,7 @@ export default function DashboardHome() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [checkoutMsg, setCheckoutMsg] = useState<{ type: 'success' | 'cancel'; text: string } | null>(null);
 
   useEffect(() => {
@@ -73,22 +74,34 @@ export default function DashboardHome() {
     }
 
     (async () => {
-      const [leadsRes, apptsRes, convosRes] = await Promise.all([
-        supabase.from('leads').select('*').order('created_at', { ascending: false }),
-        supabase.from('appointments').select('*').order('created_at', { ascending: false }),
-        supabase.from('chat_conversations').select('*').order('created_at', { ascending: false }),
-      ]);
+      try {
+        const [leadsRes, apptsRes, convosRes] = await Promise.all([
+          supabase.from('leads').select('*').order('created_at', { ascending: false }),
+          supabase.from('appointments').select('*').order('created_at', { ascending: false }),
+          supabase.from('chat_conversations').select('*').order('created_at', { ascending: false }),
+        ]);
 
-      if (leadsRes.data) setLeads(leadsRes.data as Lead[]);
-      if (apptsRes.data) setAppointments(apptsRes.data as Appointment[]);
-      if (convosRes.data) setConversations(convosRes.data as Conversation[]);
-      setLoading(false);
+        const fetchErrors = [leadsRes, apptsRes, convosRes].filter((res) => res.error);
+        if (fetchErrors.length > 0) {
+          console.error('Dashboard data load errors:', fetchErrors.map((res) => res.error));
+          setDataError('Some dashboard data could not be loaded. Please try again in a moment.');
+        }
+
+        setLeads((leadsRes.data || []) as Lead[]);
+        setAppointments((apptsRes.data || []) as Appointment[]);
+        setConversations((convosRes.data || []) as Conversation[]);
+      } catch (err) {
+        console.error('Dashboard data fetch failed:', err);
+        setDataError('Unable to load dashboard data right now.');
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
   const newLeads = leads.filter((l) => l.status === 'new').length;
   const totalLeads = leads.length;
-  const upcomingAppts = appointments.filter((a) => a.status === 'scheduled' || a.status === 'confirmed');
+  const upcomingAppts = appointments.filter((a) => a.status === 'requested' || a.status === 'scheduled' || a.status === 'confirmed');
   const activeConvos = conversations.filter((c) => c.status === 'active' || c.status === 'awaiting_human');
   const pipelineValue = leads
     .filter((l) => l.status === 'new' || l.status === 'contacted' || l.status === 'qualified')
@@ -114,15 +127,22 @@ export default function DashboardHome() {
           {checkoutMsg.text}
         </div>
       )}
+      {dataError && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          {dataError}
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-bold text-slate-900 capitalize">Good morning, {firstName}</h1>
         <p className="mt-1 text-sm text-slate-500">Here's what your AI employees have been doing.</p>
       </div>
 
+      <OnboardingChecklist userId={user?.id} />
+
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label="New leads" value={newLeads.toString()} sub={`${totalLeads} total in pipeline`} color="teal" />
-        <StatCard icon={CalendarDays} label="Upcoming appointments" value={upcomingAppts.length.toString()} sub="Scheduled & confirmed" color="blue" />
+        <StatCard icon={CalendarDays} label="Upcoming appointments" value={upcomingAppts.length.toString()} sub="Requests, scheduled & confirmed" color="blue" />
         <StatCard icon={MessageSquare} label="Active conversations" value={activeConvos.length.toString()} sub={activeConvos.length > 0 ? 'Needs attention' : 'All caught up'} color="amber" />
         <StatCard icon={DollarSign} label="Pipeline value" value={`$${pipelineValue.toLocaleString()}`} sub="Estimated, not guaranteed" color="green" />
       </div>
@@ -227,10 +247,14 @@ export default function DashboardHome() {
                   </div>
                 </div>
                 <span className={`badge ${
-                  appt.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                  appt.status === 'confirmed'
+                    ? 'bg-green-100 text-green-700'
+                    : appt.status === 'requested'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-blue-100 text-blue-700'
                 }`}>
                   {appt.status === 'confirmed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-                  {appt.status}
+                  {appt.status === 'requested' ? 'pending confirmation' : appt.status}
                 </span>
               </div>
             ))}

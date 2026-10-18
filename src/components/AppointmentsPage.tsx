@@ -19,15 +19,26 @@ type Appointment = {
   created_at: string;
 };
 
-const statusFilters: (AppointmentStatus | 'all')[] = ['all', 'scheduled', 'confirmed', 'completed', 'rescheduled', 'cancelled', 'no-show'];
+const statusFilters: (AppointmentStatus | 'all')[] = ['all', 'requested', 'scheduled', 'confirmed', 'completed', 'rescheduled', 'cancelled', 'no-show'];
 
 const statusStyles: Record<AppointmentStatus, string> = {
-  scheduled: 'bg-amber-100 text-amber-700',
+  requested: 'bg-amber-100 text-amber-700',
+  scheduled: 'bg-blue-100 text-blue-700',
   confirmed: 'bg-green-100 text-green-700',
   completed: 'bg-blue-100 text-blue-700',
   rescheduled: 'bg-purple-100 text-purple-700',
   cancelled: 'bg-red-100 text-red-700',
   'no-show': 'bg-slate-200 text-slate-600',
+};
+
+const statusLabels: Record<AppointmentStatus, string> = {
+  requested: 'pending confirmation',
+  scheduled: 'scheduled',
+  confirmed: 'confirmed',
+  completed: 'completed',
+  rescheduled: 'rescheduled',
+  cancelled: 'cancelled',
+  'no-show': 'no-show',
 };
 
 export default function AppointmentsPage() {
@@ -155,7 +166,7 @@ export default function AppointmentsPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Appointments</h1>
-          <p className="mt-1 text-sm text-slate-500">Booked by your AI employees, ready for your team.</p>
+          <p className="mt-1 text-sm text-slate-500">Customer appointment requests and bookings, ready for your team.</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={fetchAppointments} disabled={loading} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
@@ -180,7 +191,7 @@ export default function AppointmentsPage() {
               filter === s ? 'bg-teal-600 text-white' : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50'
             }`}
           >
-            {s === 'all' ? 'All' : s.replace('-', ' ')}
+            {s === 'all' ? 'All' : statusLabels[s]}
           </button>
         ))}
       </div>
@@ -200,7 +211,7 @@ export default function AppointmentsPage() {
           </h3>
           <p className="mt-1 text-sm text-slate-500">
             {appointments.length === 0
-              ? 'When your AI Appointment Assistant books a customer, or you add one manually, it will appear here.'
+              ? 'When a customer requests an appointment or your team adds one, it will appear here.'
               : 'Try a different filter.'}
           </p>
           {appointments.length === 0 && (
@@ -223,7 +234,7 @@ export default function AppointmentsPage() {
                   <span className="text-xs font-medium text-slate-500">{appt.date}</span>
                   <span className="text-sm font-bold text-slate-900">{appt.time}</span>
                 </div>
-                <span className={`badge ${statusStyles[appt.status]}`}>{appt.status.replace('-', ' ')}</span>
+                <span className={`badge ${statusStyles[appt.status]}`}>{statusLabels[appt.status]}</span>
               </div>
               <p className="mt-3 text-sm font-semibold text-slate-900">{appt.customer_name}</p>
               <p className="text-sm text-slate-500">{appt.service}</p>
@@ -269,7 +280,7 @@ function AppointmentModal({ appt, onClose, onUpdateStatus }: {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-slate-900">{appt.customer_name}</h2>
-              <span className={`badge ${statusStyles[appt.status]}`}>{appt.status.replace('-', ' ')}</span>
+              <span className={`badge ${statusStyles[appt.status]}`}>{statusLabels[appt.status]}</span>
             </div>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
@@ -294,7 +305,7 @@ function AppointmentModal({ appt, onClose, onUpdateStatus }: {
         <div className="mt-6">
           <p className="mb-2 text-sm font-medium text-slate-700">Update status</p>
           <div className="flex flex-wrap gap-2">
-            {(['scheduled', 'confirmed', 'completed', 'rescheduled', 'cancelled', 'no-show'] as AppointmentStatus[]).map((s) => (
+            {(['requested', 'scheduled', 'confirmed', 'completed', 'rescheduled', 'cancelled', 'no-show'] as AppointmentStatus[]).map((s) => (
               <button
                 key={s}
                 onClick={() => onUpdateStatus(s)}
@@ -304,7 +315,7 @@ function AppointmentModal({ appt, onClose, onUpdateStatus }: {
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                {s.replace('-', ' ')}
+                {statusLabels[s]}
               </button>
             ))}
           </div>
@@ -346,7 +357,7 @@ function AddAppointmentForm({ onClose, onAdd }: {
   const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const handleSubmit = () => {
-    if (!form.customer_name.trim()) return;
+    if (!form.customer_name.trim() || !form.phone.trim() || !form.service.trim() || !form.date.trim() || !form.time.trim()) return;
     onAdd(form);
   };
 
@@ -392,7 +403,7 @@ function AddAppointmentForm({ onClose, onAdd }: {
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
-          <button onClick={handleSubmit} disabled={!form.customer_name.trim() || !form.date.trim() || !form.time.trim()} className="btn-primary disabled:cursor-not-allowed disabled:opacity-50">
+          <button onClick={handleSubmit} disabled={!form.customer_name.trim() || !form.phone.trim() || !form.service.trim() || !form.date.trim() || !form.time.trim()} className="btn-primary disabled:cursor-not-allowed disabled:opacity-50">
             <Plus className="h-4 w-4" />
             Add Appointment
           </button>

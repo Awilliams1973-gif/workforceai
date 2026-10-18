@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
 import { MessageSquare, X, Send, Bot, UserCircle, Sparkles } from 'lucide-react';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 interface ChatMsg {
   id: string;
@@ -8,7 +8,9 @@ interface ChatMsg {
   text: string;
 }
 
-const GREETING = "Hi there! I'm the AI Receptionist for WorkforceAI. I can answer questions about our AI employees, capture your info, or help you get started. What can I help you with?";
+const GREETING = "Hi there! I'm WorkforceAI's AI Receptionist. I can explain our AI tools, help you request a demo or free AI audit, and connect you with our team. What would you like to know?";
+const receptionistAvailable = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+const turnstileEnabled = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -19,6 +21,8 @@ export default function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [verificationStarted, setVerificationStarted] = useState(false);
   const [unread, setUnread] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -43,17 +47,35 @@ export default function ChatWidget() {
   }, [open]);
 
   const sendMessage = async () => {
+    if (!receptionistAvailable) {
+      const errMsg: ChatMsg = {
+        id: `e${Date.now()}`,
+        sender: 'ai',
+        text: 'The AI receptionist is currently unavailable because the Supabase configuration is missing. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable live chat.',
+      };
+      setMessages((prev) => [...prev, errMsg]);
+      return;
+    }
+
     const text = input.trim();
     if (!text || loading) return;
+
+    if (turnstileEnabled && !turnstileToken) {
+      setVerificationStarted(true);
+      return;
+    }
 
     const userMsg: ChatMsg = {
       id: `u${Date.now()}`,
       sender: 'customer',
       text,
     };
+    const verifiedToken = turnstileToken;
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+    setTurnstileToken(null);
+    setVerificationStarted(false);
 
     try {
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
@@ -79,6 +101,7 @@ export default function ChatWidget() {
           messages: allMessages,
           sessionId,
           conversationId,
+          turnstileToken: verifiedToken,
         }),
       });
 
@@ -108,12 +131,16 @@ export default function ChatWidget() {
         setUnread(true);
       }
     } catch (error) {
-      console.error('AI Receptionist request failed:', error);
       const detail = error instanceof Error ? error.message : 'Unknown connection error';
+      console.error('AI Receptionist request failed:', detail);
+      const verificationFailed = detail === 'Verification failed. Please try again.';
+      if (verificationFailed) setVerificationStarted(true);
       const errMsg: ChatMsg = {
         id: `e${Date.now()}`,
         sender: 'ai',
-        text: `I’m having trouble connecting right now (${detail}). Please try again in a moment, or reach us directly through the contact form.`,
+        text: verificationFailed
+          ? 'The security check could not be verified. Please complete it again and resend your message.'
+          : 'I’m having trouble connecting right now. Please try again in a moment, or contact the WorkforceAI team directly.',
       };
       setMessages((prev) => [...prev, errMsg]);
     } finally {
@@ -123,8 +150,7 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Chat bubble button */}
-      {!open && (
+      {!open && receptionistAvailable && (
         <button
           onClick={() => setOpen(true)}
           className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg transition-all duration-200 hover:bg-teal-700 hover:shadow-xl active:scale-95"
@@ -139,8 +165,13 @@ export default function ChatWidget() {
         </button>
       )}
 
-      {/* Chat panel */}
-      {open && (
+      {!receptionistAvailable && (
+        <div className="fixed bottom-5 right-5 z-50 max-w-xs rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-lg">
+          AI receptionist is currently unavailable. Add the Supabase environment variables to enable live chat.
+        </div>
+      )}
+
+      {open && receptionistAvailable && (
         <div className="fixed bottom-5 right-5 z-50 flex h-[min(560px,calc(100vh-2.5rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 animate-fade-in-up">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-200 bg-teal-600 px-4 py-3 text-white">
@@ -212,6 +243,12 @@ export default function ChatWidget() {
 
           {/* Input */}
           <div className="border-t border-slate-200 bg-white p-3">
+            {import.meta.env.VITE_TURNSTILE_SITE_KEY && !verificationStarted && (
+              <button type="button" onClick={() => setVerificationStarted(true)} className="mb-2 w-full rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 hover:bg-teal-100">
+                Verify before sending
+              </button>
+            )}
+            {import.meta.env.VITE_TURNSTILE_SITE_KEY && verificationStarted && <TurnstileWidget manual onToken={setTurnstileToken} />}
             <div className="flex items-center gap-2">
               <input
                 ref={inputRef}

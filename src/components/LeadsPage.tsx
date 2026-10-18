@@ -410,7 +410,7 @@ function AddLeadForm({ onClose, onAdd }: {
   const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const handleSubmit = () => {
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || !form.phone.trim() || !form.email.trim() || !form.service.trim() || !form.source.trim()) return;
     onAdd({ ...form, value: Number(form.value) || 0 });
   };
 
@@ -460,7 +460,7 @@ function AddLeadForm({ onClose, onAdd }: {
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
-          <button onClick={handleSubmit} disabled={!form.name.trim()} className="btn-primary disabled:cursor-not-allowed disabled:opacity-50">
+          <button onClick={handleSubmit} disabled={!form.name.trim() || !form.phone.trim() || !form.email.trim() || !form.service.trim() || !form.source.trim()} className="btn-primary disabled:cursor-not-allowed disabled:opacity-50">
             <Plus className="h-4 w-4" />
             Add Lead
           </button>

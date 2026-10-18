@@ -1,0 +1,10 @@
+{
+  "name": "WorkforceAI",
+  "short_name": "WorkforceAI",
+  "description": "AI employees for local service businesses",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d9488",
+  "icons": []
+}

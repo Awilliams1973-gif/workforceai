@@ -2,11 +2,9 @@ import { useState } from 'react';
 import { demoEmployees } from '@/lib/demo-data';
 import type { AIEmployee } from '@/lib/types';
 import {
-  Handshake,
   CalendarCheck,
   Megaphone,
   Star,
-  Power,
   CheckCircle2,
   Clock,
   Users,
@@ -16,13 +14,6 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-
-const employeeIcons: Record<string, typeof Handshake> = {
-  handshake: Handshake,
-  calendar: CalendarCheck,
-  megaphone: Megaphone,
-  star: Star,
-};
 
 type Props = {
   employeeId: 'sales' | 'appointments-assistant' | 'marketing' | 'reviews';
@@ -48,10 +39,10 @@ export default function AIEmployeePage({ employeeId }: Props) {
         <StatusBadge status={employee.status} />
       </div>
 
-      {employeeId === 'sales' && <SalesContent employee={employee} />}
-      {employeeId === 'appointments-assistant' && <AppointmentsContent employee={employee} />}
-      {employeeId === 'marketing' && <MarketingContent employee={employee} />}
-      {employeeId === 'reviews' && <ReviewsContent employee={employee} />}
+      {employeeId === 'sales' && <SalesContent />}
+      {employeeId === 'appointments-assistant' && <AppointmentsContent />}
+      {employeeId === 'marketing' && <MarketingContent />}
+      {employeeId === 'reviews' && <ReviewsContent />}
     </div>
   );
 }
@@ -83,7 +74,9 @@ function StatBox({ icon: Icon, label, value, color }: { icon: typeof Users; labe
   );
 }
 
-function SalesContent({ employee }: { employee: AIEmployee }) {
+function SalesContent() {
+  const [employees] = useState<AIEmployee[]>(demoEmployees);
+  const employee = employees.find((e) => e.id === 'sales')!;
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-3">
@@ -141,7 +134,9 @@ function SalesContent({ employee }: { employee: AIEmployee }) {
   );
 }
 
-function AppointmentsContent({ employee }: { employee: AIEmployee }) {
+function AppointmentsContent() {
+  const [employees] = useState<AIEmployee[]>(demoEmployees);
+  const employee = employees.find((e) => e.id === 'appointments')!;
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-3">
@@ -192,7 +187,7 @@ function AppointmentsContent({ employee }: { employee: AIEmployee }) {
   );
 }
 
-function MarketingContent({ employee }: { employee: AIEmployee }) {
+function MarketingContent() {
   return (
     <>
       <div className="flex items-start gap-3 rounded-xl bg-amber-50 p-4 ring-1 ring-inset ring-amber-200">
@@ -251,7 +246,7 @@ function MarketingContent({ employee }: { employee: AIEmployee }) {
   );
 }
 
-function ReviewsContent({ employee }: { employee: AIEmployee }) {
+function ReviewsContent() {
   return (
     <>
       <div className="flex items-start gap-3 rounded-xl bg-amber-50 p-4 ring-1 ring-inset ring-amber-200">

@@ -2,7 +2,26 @@ import { Headset, Twitter, Linkedin, Facebook } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 
 export default function PublicFooter() {
-  const { setView } = useAppStore();
+  const { setView, view } = useAppStore();
+
+  const scrollToSection = (sectionId: string) => {
+    if (view !== 'home') {
+      setView('home');
+      setTimeout(() => {
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      return;
+    }
+
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const scrollToTop = () => {
+    if (view !== 'home') {
+      setView('home');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <footer className="border-t border-slate-200 bg-slate-900 text-slate-300">
@@ -19,36 +38,35 @@ export default function PublicFooter() {
               Your AI Employee for growing your business. Never miss a customer again.
             </p>
             <div className="mt-4 flex gap-3">
-              <a href="#" className="text-slate-400 transition-colors hover:text-teal-400"><Twitter className="h-5 w-5" /></a>
-              <a href="#" className="text-slate-400 transition-colors hover:text-teal-400"><Linkedin className="h-5 w-5" /></a>
-              <a href="#" className="text-slate-400 transition-colors hover:text-teal-400"><Facebook className="h-5 w-5" /></a>
+              <button type="button" aria-label="Back to top" onClick={scrollToTop} className="text-slate-400 transition-colors hover:text-teal-400"><Twitter className="h-5 w-5" /></button>
+              <button type="button" aria-label="Scroll to how it works" onClick={() => scrollToSection('how-it-works')} className="text-slate-400 transition-colors hover:text-teal-400"><Linkedin className="h-5 w-5" /></button>
+              <button type="button" aria-label="Scroll to AI employees" onClick={() => scrollToSection('ai-employees')} className="text-slate-400 transition-colors hover:text-teal-400"><Facebook className="h-5 w-5" /></button>
             </div>
           </div>
 
           <div>
             <h4 className="text-sm font-semibold text-white">Product</h4>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><button onClick={() => setView('audit')} className="text-slate-400 hover:text-white">Free AI Audit</button></li>
-              <li><button onClick={() => setView('pricing')} className="text-slate-400 hover:text-white">Pricing</button></li>
-              <li><button onClick={() => setView('auth')} className="text-slate-400 hover:text-white">Live Demo</button></li>
+              <li><button type="button" onClick={() => setView('audit')} className="text-slate-400 hover:text-white">Free AI Audit</button></li>
+              <li><button type="button" onClick={() => setView('auth')} className="text-slate-400 hover:text-white">Live Demo</button></li>
             </ul>
           </div>
 
           <div>
             <h4 className="text-sm font-semibold text-white">Company</h4>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><a href="#" className="text-slate-400 hover:text-white">About</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white">Contact</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white">Careers</a></li>
+              <li><button type="button" onClick={() => scrollToSection('how-it-works')} className="text-slate-400 hover:text-white">About</button></li>
+              <li><button type="button" onClick={() => setView('auth')} className="text-slate-400 hover:text-white">Contact</button></li>
+              <li><button type="button" onClick={() => setView('auth')} className="text-slate-400 hover:text-white">Careers</button></li>
             </ul>
           </div>
 
           <div>
             <h4 className="text-sm font-semibold text-white">Legal</h4>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><a href="#" className="text-slate-400 hover:text-white">Privacy Policy</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white">Terms of Service</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white">Refund Policy</a></li>
+              <li><button type="button" onClick={() => setView('home')} className="text-slate-400 hover:text-white">Privacy Policy</button></li>
+              <li><button type="button" onClick={() => setView('home')} className="text-slate-400 hover:text-white">Terms of Service</button></li>
+              <li><button type="button" onClick={() => setView('home')} className="text-slate-400 hover:text-white">Refund Policy</button></li>
             </ul>
           </div>
         </div>

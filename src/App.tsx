@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseConfigured, SUPABASE_CONFIG_MESSAGE } from '@/lib/supabase';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { useAppStore } from '@/lib/store';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
@@ -14,10 +15,10 @@ import ReceptionistPage from '@/components/ReceptionistPage';
 import ConversationsPage from '@/components/ConversationsPage';
 import KnowledgePage from '@/components/KnowledgePage';
 import AIEmployeePage from '@/components/AIEmployeePage';
-import PricingPage from '@/components/PricingPage';
 import SettingsPage from '@/components/SettingsPage';
 import AuditLeadsPage from '@/components/AuditLeadsPage';
 import ChatWidget from '@/components/ChatWidget';
+import NotFoundPage from '@/components/NotFoundPage';
 import {
   LeadsErrorBoundary,
   AppointmentsErrorBoundary,
@@ -47,11 +48,20 @@ function App() {
   const [authReady, setAuthReady] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
     const initializeAuth = async () => {
+      if (!supabaseConfigured) {
+        if (mounted) {
+          setAuthError(null);
+          setAuthReady(true);
+        }
+        return;
+      }
+
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
@@ -100,15 +110,22 @@ function App() {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (event: AuthChangeEvent, session: Session | null) => {
         (async () => {
           try {
             if (event === 'SIGNED_OUT') {
               if (mounted) {
                 setUser(null);
                 setIsAdmin(false);
+                setPasswordRecovery(false);
                 setView('home');
                 setAuthError(null);
+              }
+            } else if (event === 'PASSWORD_RECOVERY' && session?.user) {
+              if (mounted) {
+                setUser(session.user);
+                setPasswordRecovery(true);
+                setView('auth');
               }
             } else if (event === 'SIGNED_IN' && session?.user) {
               if (mounted) {
@@ -217,15 +234,65 @@ function App() {
     );
   }
 
+  const knownPaths = new Set(['', '/', '/index.html', '/dashboard']);
+  const hasKnownPath = knownPaths.has(window.location.pathname);
+
+  if (!hasKnownPath) {
+    return <NotFoundPage />;
+  }
+
+  const authRequiredView = view === 'auth' || dashboardViews.includes(view);
+
+  if (!supabaseConfigured && authRequiredView) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-teal-50 px-4">
+        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Setup required</h1>
+          <p className="mt-3 text-slate-600">
+            {SUPABASE_CONFIG_MESSAGE}
+          </p>
+          <p className="mt-3 text-sm text-slate-500">
+            Once your environment variables are configured, sign-in and dashboard features will work normally.
+          </p>
+          <button
+            type="button"
+            onClick={() => setView('home')}
+            className="mt-6 inline-flex items-center justify-center rounded-lg bg-teal-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-teal-700"
+          >
+            Back to home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Auth page — standalone, no nav/footer
   if (view === 'auth') {
-    return <AuthPage />;
+    return (
+      <AuthPage
+        passwordRecovery={passwordRecovery}
+        onPasswordRecoveryComplete={() => setPasswordRecovery(false)}
+      />
+    );
   }
 
   // Dashboard views require authentication
   if (dashboardViews.includes(view)) {
     if (!user) {
-      return <AuthPage />;
+      return (
+        <AuthPage
+          passwordRecovery={passwordRecovery}
+          onPasswordRecoveryComplete={() => setPasswordRecovery(false)}
+        />
+      );
+    }
+    if (view === 'audit-leads' && !isAdmin) {
+      return <AccessDeniedPage onBack={() => setView('dashboard')} />;
     }
     return (
       <DashboardLayout>
@@ -261,9 +328,6 @@ function App() {
         </SectionErrorBoundary>
 
         <SectionErrorBoundary>
-          {view === 'pricing' && <PricingPage />}
-        </SectionErrorBoundary>
-        <SectionErrorBoundary>
           {view === 'settings' && <SettingsPage />}
         </SectionErrorBoundary>
         <SectionErrorBoundary>
@@ -281,6 +345,18 @@ function App() {
       </main>
       <PublicFooter />
       <ChatWidget />
+    </div>
+  );
+}
+
+function AccessDeniedPage({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="text-2xl font-bold text-slate-900">Access denied</h1>
+        <p className="mt-3 text-slate-600">You do not have permission to view this page.</p>
+        <button type="button" onClick={onBack} className="btn-primary mx-auto mt-6">Back to dashboard</button>
+      </div>
     </div>
   );
 }

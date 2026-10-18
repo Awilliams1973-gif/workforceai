@@ -11,10 +11,8 @@ import {
   Settings2,
   CheckCircle2,
   ArrowRight,
-  Sparkles,
   Phone,
   MessageSquare,
-  Clock,
   Users,
 } from 'lucide-react';
 

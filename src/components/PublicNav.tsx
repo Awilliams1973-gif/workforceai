@@ -8,7 +8,6 @@ export default function PublicNav() {
     { label: 'How it works', target: 'how-it-works' },
     { label: 'AI Employees', target: 'ai-employees' },
     { label: 'Industries', target: 'industries' },
-    { label: 'Pricing', target: 'pricing' },
     { label: 'FAQ', target: 'faq' },
   ];
 
@@ -81,7 +80,6 @@ function MobileNav() {
     { label: 'How it works', target: 'how-it-works' },
     { label: 'AI Employees', target: 'ai-employees' },
     { label: 'Industries', target: 'industries' },
-    { label: 'Pricing', target: 'pricing' },
     { label: 'FAQ', target: 'faq' },
   ];
 

@@ -4,11 +4,28 @@ import {
   CreateLeadSchema,
   LoginSchema,
   SignupSchema,
+  AuditSubmissionSchema,
+  AppointmentSchema,
   validateSync,
 } from '@/lib/validation';
-import { z } from 'zod';
 
 describe('Validation Schemas', () => {
+  describe('AppointmentSchema', () => {
+    it('accepts an appointment request awaiting confirmation', () => {
+      const request = {
+        customerName: 'Alex Test',
+        phone: '+1-555-123-4567',
+        service: 'WorkforceAI demo',
+        date: '2026-10-21',
+        time: '14:30',
+        status: 'requested',
+        notes: '',
+      };
+
+      expect(AppointmentSchema.safeParse(request).success).toBe(true);
+    });
+  });
+
   describe('LeadSchema', () => {
     it('should validate a valid lead', () => {
       const validLead = {
@@ -184,6 +201,30 @@ describe('Validation Schemas', () => {
     });
   });
 
+  describe('AuditSubmissionSchema', () => {
+    const validAudit = {
+      name: 'Jane Doe',
+      businessName: 'Jane Plumbing',
+      email: 'jane@example.com',
+      industry: 'Plumbing',
+      monthlyInquiries: 50,
+      unansweredInquiries: 15,
+      averageCustomerValue: 350,
+    };
+
+    it('accepts valid audit data', () => {
+      expect(AuditSubmissionSchema.safeParse(validAudit).success).toBe(true);
+    });
+
+    it('rejects unanswered inquiries above total inquiries', () => {
+      expect(AuditSubmissionSchema.safeParse({ ...validAudit, unansweredInquiries: 51 }).success).toBe(false);
+    });
+
+    it('rejects negative and non-finite values', () => {
+      expect(AuditSubmissionSchema.safeParse({ ...validAudit, averageCustomerValue: -1 }).success).toBe(false);
+      expect(AuditSubmissionSchema.safeParse({ ...validAudit, averageCustomerValue: Number.NaN }).success).toBe(false);
+    });
+  });
   describe('validateSync helper', () => {
     it('should return valid data on success', () => {
       const result = validateSync(LoginSchema, {
