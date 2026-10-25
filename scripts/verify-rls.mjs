@@ -65,21 +65,36 @@ async function signIn(url, anonKey, email, password, label) {
 }
 
 const main = async () => {
-  const appEnv = await readEnvFile('.env.local');
-  const testEnv = await readEnvFile('.env.rls-test');
-  const projectRef = (await readFile(new URL('supabase/.temp/project-ref', projectDirectory), 'utf8')).trim();
-  const supabaseUrl = appEnv.VITE_SUPABASE_URL;
-  const anonKey = appEnv.VITE_SUPABASE_ANON_KEY;
+  // Pass a different env file (e.g. .env.rls-test.production) to target another project.
+  const testEnvFile = process.argv[2] || '.env.rls-test';
+  const testEnv = await readEnvFile(testEnvFile);
+  let supabaseUrl;
+  let anonKey;
+  let projectRef;
 
-  assert(supabaseUrl && anonKey, 'The project .env.local must configure the Supabase URL and anon key.');
-  assert(
-    testEnv.RLS_TEST_CONFIRM_PROJECT_REF === projectRef,
-    'Set RLS_TEST_CONFIRM_PROJECT_REF in .env.rls-test to the linked staging project ref.',
-  );
+  if (testEnv.RLS_TEST_SUPABASE_URL) {
+    // Explicit target: the confirmed ref must match the URL's project.
+    supabaseUrl = testEnv.RLS_TEST_SUPABASE_URL;
+    anonKey = testEnv.RLS_TEST_SUPABASE_ANON_KEY;
+    projectRef = testEnv.RLS_TEST_CONFIRM_PROJECT_REF;
+    assert(anonKey, `Set RLS_TEST_SUPABASE_ANON_KEY in ${testEnvFile}.`);
+    assert(projectRef, `Set RLS_TEST_CONFIRM_PROJECT_REF in ${testEnvFile}.`);
+  } else {
+    const appEnv = await readEnvFile('.env.local');
+    projectRef = (await readFile(new URL('supabase/.temp/project-ref', projectDirectory), 'utf8')).trim();
+    supabaseUrl = appEnv.VITE_SUPABASE_URL;
+    anonKey = appEnv.VITE_SUPABASE_ANON_KEY;
+    assert(supabaseUrl && anonKey, 'The project .env.local must configure the Supabase URL and anon key.');
+    assert(
+      testEnv.RLS_TEST_CONFIRM_PROJECT_REF === projectRef,
+      `Set RLS_TEST_CONFIRM_PROJECT_REF in ${testEnvFile} to the linked staging project ref.`,
+    );
+  }
   assert(
     new URL(supabaseUrl).hostname === `${projectRef}.supabase.co`,
-    'The configured Supabase URL does not match the linked project. Refusing to run.',
+    'The configured Supabase URL does not match the confirmed project. Refusing to run.',
   );
+  console.log(`Target project: ${projectRef} (${testEnvFile})`);
 
   for (const key of [
     'RLS_TEST_USER_A_EMAIL',

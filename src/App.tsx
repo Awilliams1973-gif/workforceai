@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, supabaseConfigured, SUPABASE_CONFIG_MESSAGE } from '@/lib/supabase';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
-import { useAppStore } from '@/lib/store';
+import { useAppStore, viewFromPath, infoViewPaths } from '@/lib/store';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import LandingPage from '@/components/LandingPage';
@@ -19,6 +19,7 @@ import SettingsPage from '@/components/SettingsPage';
 import AuditLeadsPage from '@/components/AuditLeadsPage';
 import ChatWidget from '@/components/ChatWidget';
 import NotFoundPage from '@/components/NotFoundPage';
+import InfoPages from '@/components/InfoPages';
 import {
   LeadsErrorBoundary,
   AppointmentsErrorBoundary,
@@ -49,6 +50,20 @@ function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
+
+  useEffect(() => {
+    const syncViewWithPath = () => {
+      const pathView = viewFromPath(window.location.pathname);
+      const current = useAppStore.getState().view;
+      if (pathView !== 'home') {
+        useAppStore.setState({ view: pathView });
+      } else if (infoViewPaths[current]) {
+        useAppStore.setState({ view: 'home' });
+      }
+    };
+    window.addEventListener('popstate', syncViewWithPath);
+    return () => window.removeEventListener('popstate', syncViewWithPath);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -234,8 +249,8 @@ function App() {
     );
   }
 
-  const knownPaths = new Set(['', '/', '/index.html', '/dashboard']);
-  const hasKnownPath = knownPaths.has(window.location.pathname);
+  const knownPaths = new Set(['', '/', '/index.html', '/dashboard', '/privacy', '/terms', '/refund', '/contact']);
+  const hasKnownPath = knownPaths.has(window.location.pathname.replace(/(.)\/+$/, '$1'));
 
   if (!hasKnownPath) {
     return <NotFoundPage />;
@@ -341,7 +356,13 @@ function App() {
     <div className="flex min-h-screen flex-col bg-white">
       <PublicNav />
       <main className="flex-1">
-        {view === 'audit' ? <AuditPage /> : <LandingPage />}
+        {view === 'audit' ? (
+          <AuditPage />
+        ) : view === 'privacy' || view === 'terms' || view === 'refund' || view === 'contact' ? (
+          <InfoPages view={view} />
+        ) : (
+          <LandingPage />
+        )}
       </main>
       <PublicFooter />
       <ChatWidget />

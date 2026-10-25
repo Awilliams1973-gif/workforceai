@@ -56,17 +56,16 @@ export default function PublicFooter() {
             <h4 className="text-sm font-semibold text-white">Company</h4>
             <ul className="mt-3 space-y-2 text-sm">
               <li><button type="button" onClick={() => scrollToSection('how-it-works')} className="text-slate-400 hover:text-white">About</button></li>
-              <li><button type="button" onClick={() => setView('auth')} className="text-slate-400 hover:text-white">Contact</button></li>
-              <li><button type="button" onClick={() => setView('auth')} className="text-slate-400 hover:text-white">Careers</button></li>
+              <li><button type="button" onClick={() => setView('contact')} className="text-slate-400 hover:text-white">Contact</button></li>
             </ul>
           </div>
 
           <div>
             <h4 className="text-sm font-semibold text-white">Legal</h4>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><button type="button" onClick={() => setView('home')} className="text-slate-400 hover:text-white">Privacy Policy</button></li>
-              <li><button type="button" onClick={() => setView('home')} className="text-slate-400 hover:text-white">Terms of Service</button></li>
-              <li><button type="button" onClick={() => setView('home')} className="text-slate-400 hover:text-white">Refund Policy</button></li>
+              <li><button type="button" onClick={() => setView('privacy')} className="text-slate-400 hover:text-white">Privacy Policy</button></li>
+              <li><button type="button" onClick={() => setView('terms')} className="text-slate-400 hover:text-white">Terms of Service</button></li>
+              <li><button type="button" onClick={() => setView('refund')} className="text-slate-400 hover:text-white">Refund Policy</button></li>
             </ul>
           </div>
         </div>

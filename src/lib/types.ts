@@ -14,7 +14,11 @@ export type View =
   | 'reviews'
   | 'pricing'
   | 'settings'
-  | 'audit-leads';
+  | 'audit-leads'
+  | 'privacy'
+  | 'terms'
+  | 'refund'
+  | 'contact';
 
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'won' | 'lost';
 
