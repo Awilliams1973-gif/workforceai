@@ -122,27 +122,28 @@ export type LoginData = z.infer<typeof LoginSchema>;
 
 // ============ VALIDATION HELPERS ============
 
-export const validateInput = async <T>(schema: z.ZodSchema<T>, data: unknown): Promise<{ valid: true; data: T } | { valid: false; error: string }> => {
+const formatIssues = (error: z.ZodError): string =>
+  error.issues.map((issue) => `${issue.path.map(String).join('.')}: ${issue.message}`).join(', ');
+
+export const validateInput = async <T>(schema: z.ZodType<T>, data: unknown): Promise<{ valid: true; data: T } | { valid: false; error: string }> => {
   try {
     const validated = await schema.parseAsync(data);
     return { valid: true, data: validated };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errorMessages = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-      return { valid: false, error: errorMessages };
+      return { valid: false, error: formatIssues(error) };
     }
     return { valid: false, error: 'Validation failed' };
   }
 };
 
-export const validateSync = <T>(schema: z.ZodSchema<T>, data: unknown): { valid: true; data: T } | { valid: false; error: string } => {
+export const validateSync = <T>(schema: z.ZodType<T>, data: unknown): { valid: true; data: T } | { valid: false; error: string } => {
   try {
     const validated = schema.parse(data);
     return { valid: true, data: validated };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errorMessages = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-      return { valid: false, error: errorMessages };
+      return { valid: false, error: formatIssues(error) };
     }
     return { valid: false, error: 'Validation failed' };
   }

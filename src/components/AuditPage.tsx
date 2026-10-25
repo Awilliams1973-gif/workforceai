@@ -79,7 +79,7 @@ export default function AuditPage() {
       averageCustomerValue: Number(form.averageCustomerValue),
     });
     if (!validation.success) {
-      setError(validation.error.errors[0]?.message || 'Please check your answers.');
+      setError(validation.error.issues[0]?.message || 'Please check your answers.');
       return;
     }
 
