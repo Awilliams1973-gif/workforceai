@@ -29,3 +29,6 @@ coverage
 
 .vercel
 .env*
+
+# Database backups contain production data
+backups/
