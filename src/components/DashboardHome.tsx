@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/lib/store';
 import { demoEmployees } from '@/lib/demo-data';
 import OnboardingChecklist from '@/components/OnboardingChecklist';
+import { LoadingSkeleton } from './LoadingSkeleton';
 import {
   Users,
   CalendarDays,
@@ -114,9 +115,7 @@ export default function DashboardHome() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-teal-600" />
-      </div>
+      <LoadingSkeleton rows={6} label="Loading dashboard" />
     );
   }
 

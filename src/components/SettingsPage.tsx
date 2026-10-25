@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/lib/store';
+import { LoadingSkeleton } from './LoadingSkeleton';
 import {
   Building2,
   Phone,
@@ -132,9 +133,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
-      </div>
+      <LoadingSkeleton rows={4} label="Loading settings" />
     );
   }
 
