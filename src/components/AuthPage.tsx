@@ -8,6 +8,16 @@ type AuthPageProps = {
   onPasswordRecoveryComplete?: () => void;
 };
 
+const MIN_PASSWORD_LENGTH = 10;
+const PASSWORD_HINT = `At least ${MIN_PASSWORD_LENGTH} characters, with letters and numbers`;
+
+function passwordPolicyError(value: string): string | null {
+  if (value.length < MIN_PASSWORD_LENGTH || !/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters and include letters and numbers.`;
+  }
+  return null;
+}
+
 export default function AuthPage({
   passwordRecovery = false,
   onPasswordRecoveryComplete,
@@ -86,6 +96,12 @@ export default function AuthPage({
 
     try {
       if (mode === 'signup') {
+        const policyError = passwordPolicyError(password);
+        if (policyError) {
+          setError(policyError);
+          setLoading(false);
+          return;
+        }
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -139,6 +155,11 @@ export default function AuthPage({
     e.preventDefault();
     if (newPassword !== confirmNewPassword) {
       setError('Passwords do not match.');
+      return;
+    }
+    const policyError = passwordPolicyError(newPassword);
+    if (policyError) {
+      setError(policyError);
       return;
     }
 
@@ -203,8 +224,8 @@ export default function AuthPage({
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="At least 6 characters"
-                    minLength={6}
+                    placeholder={PASSWORD_HINT}
+                    minLength={MIN_PASSWORD_LENGTH}
                     autoComplete="new-password"
                     required
                   />
@@ -358,8 +379,9 @@ export default function AuthPage({
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
-                  minLength={6}
+                  placeholder={mode === 'signup' ? PASSWORD_HINT : 'Your password'}
+                  minLength={mode === 'signup' ? MIN_PASSWORD_LENGTH : undefined}
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                   required
                 />
               </div>

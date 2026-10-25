@@ -92,4 +92,15 @@ describe('AuthPage password recovery', () => {
     expect(await screen.findByText('Passwords do not match.')).toBeInTheDocument();
     expect(supabase.auth.updateUser).not.toHaveBeenCalled();
   });
+
+  it('rejects a new password that is too weak', async () => {
+    render(<AuthPage passwordRecovery />);
+
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'allletters' } });
+    fireEvent.change(screen.getByLabelText('Confirm new password'), { target: { value: 'allletters' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Update password' }).closest('form')!);
+
+    expect(await screen.findByText(/at least 10 characters and include letters and numbers/)).toBeInTheDocument();
+    expect(supabase.auth.updateUser).not.toHaveBeenCalled();
+  });
 });

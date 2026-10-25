@@ -12,7 +12,7 @@ test.describe('authenticated dashboard smoke tests', () => {
     await page.getByRole('button', { name: 'Sign in' }).click();
     await page.getByRole('button', { name: 'Sign in', exact: true }).last().click();
     await page.getByPlaceholder('john@smithplumbing.com').fill(email!);
-    await page.getByPlaceholder('At least 6 characters').fill(password!);
+    await page.getByPlaceholder('Your password').fill(password!);
     await page.getByRole('button', { name: 'Sign in', exact: true }).last().click();
     await expect(page.getByText('Dashboard', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
   });
