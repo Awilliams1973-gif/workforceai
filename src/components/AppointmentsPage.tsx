@@ -6,6 +6,7 @@ import {
   CalendarDays, Clock, Phone, X, CheckCircle2, CalendarX2, RotateCcw,
   Plus, RefreshCw, Inbox,
 } from 'lucide-react';
+import { LoadingSkeleton } from './LoadingSkeleton';
 
 type Appointment = {
   id: string;
@@ -198,9 +199,7 @@ export default function AppointmentsPage() {
 
       {/* Appointment list */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-teal-600" />
-        </div>
+        <LoadingSkeleton label="Loading appointments" />
       ) : filtered.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-16 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">

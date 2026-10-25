@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Inbox,
 } from 'lucide-react';
+import { LoadingSkeleton } from './LoadingSkeleton';
 
 interface ChatMessageRow {
   id: string;
@@ -144,9 +145,7 @@ export default function ConversationsPage() {
         </div>
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-teal-600" />
-            </div>
+            <LoadingSkeleton variant="list" rows={6} label="Loading conversations" />
           ) : conversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
