@@ -3,36 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { Analytics } from '@vercel/analytics/react';
 import * as Sentry from '@sentry/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { redactPII } from './lib/sentry-redaction';
 import App from './App.tsx';
 import './index.css';
-
-// PII Redaction function
-const redactPII = <T,>(data: T): T => {
-  if (typeof data === 'string') {
-    return data
-      .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL_REDACTED]')
-      .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE_REDACTED]') as T;
-  }
-  if (data === null || typeof data !== 'object') return data;
-
-  if (Array.isArray(data)) {
-    return data.map(item => redactPII(item)) as T;
-  }
-
-  // List of PII fields to redact
-  const piiFields = ['email', 'phone', 'password', 'creditCard', 'ssn', 'name', 'address'];
-
-  const redacted: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (piiFields.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
-      redacted[key] = '[REDACTED]';
-    } else {
-      redacted[key] = redactPII(value);
-    }
-  }
-
-  return redacted as T;
-};
 
 // Initialize Sentry if DSN is provided
 if (import.meta.env.VITE_SENTRY_DSN) {
@@ -52,28 +25,28 @@ if (import.meta.env.VITE_SENTRY_DSN) {
     beforeSend(event) {
       // Redact breadcrumb data
       if (event.breadcrumbs) {
-        event.breadcrumbs = event.breadcrumbs.map(bc => ({
-          ...bc,
-          data: redactPII(bc.data),
-          message: bc.message?.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]') || bc.message,
-        }));
+        event.breadcrumbs = event.breadcrumbs.map(breadcrumb => redactPII(breadcrumb));
       }
       
       // Redact exception data
       if (event.exception?.values) {
-        event.exception.values = event.exception.values.map(exception => ({
-          ...exception,
-          value: exception.value?.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]') || exception.value,
-        }));
+        event.exception.values = event.exception.values.map(exception => redactPII(exception));
       }
+
+      if (event.message) event.message = redactPII(event.message);
+      if (event.logentry) event.logentry = redactPII(event.logentry);
+      if (event.user) event.user = redactPII(event.user);
       
       // Redact request data
       if (event.request) {
         event.request = {
           ...event.request,
           url: event.request.url
-            ?.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]')
-            .replace(/([?&#](?:token|password|key|access_token|refresh_token)=)[^&#]*/gi, '$1***') || event.request.url,
+            ? redactPII(event.request.url).replace(
+                /([?&#](?:token|password|key|access_token|refresh_token)=)[^&#]*/gi,
+                '$1***',
+              )
+            : event.request.url,
           headers: redactPII(event.request.headers),
         };
         delete event.request.cookies;
