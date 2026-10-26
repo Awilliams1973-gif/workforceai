@@ -57,6 +57,10 @@ export default function ChatWidget() {
       return;
     }
 
+    if (!turnstileEnabled) {
+      return;
+    }
+
     const text = input.trim();
     if (!text || loading) return;
 
@@ -243,12 +247,17 @@ export default function ChatWidget() {
 
           {/* Input */}
           <div className="border-t border-slate-200 bg-white p-3">
+            {!turnstileEnabled && (
+              <p role="alert" className="mb-2 text-xs text-red-700">
+                Chat security verification is unavailable. Please contact the WorkforceAI team.
+              </p>
+            )}
             {import.meta.env.VITE_TURNSTILE_SITE_KEY && !verificationStarted && (
               <button type="button" onClick={() => setVerificationStarted(true)} className="mb-2 w-full rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 hover:bg-teal-100">
                 Verify before sending
               </button>
             )}
-            {import.meta.env.VITE_TURNSTILE_SITE_KEY && verificationStarted && <TurnstileWidget manual onToken={setTurnstileToken} />}
+            {turnstileEnabled && verificationStarted && <TurnstileWidget onToken={setTurnstileToken} />}
             <div className="flex items-center gap-2">
               <input
                 ref={inputRef}
@@ -257,11 +266,11 @@ export default function ChatWidget() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                disabled={loading}
+                disabled={loading || !turnstileEnabled}
               />
               <button
                 onClick={sendMessage}
-                disabled={loading || !input.trim()}
+                disabled={loading || !input.trim() || !turnstileEnabled}
                 className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white transition-all hover:bg-teal-700 active:scale-95 disabled:opacity-50"
                 aria-label="Send message"
               >

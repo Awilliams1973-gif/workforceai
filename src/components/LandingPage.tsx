@@ -42,7 +42,7 @@ const industries = [
 const faqs = [
   {
     q: 'How does the AI answer my customers?',
-    a: 'The AI Receptionist learns from your business knowledge base — services, prices, hours, service areas, and FAQs. It answers questions, captures leads, and books appointments in your voice, 24/7.',
+    a: 'The AI Receptionist learns from your business knowledge base — services, prices, hours, service areas, and FAQs. It answers questions, captures leads, and records appointment requests for your team to confirm, in your voice, 24/7.',
   },
   {
     q: 'Will it sound like a robot to my customers?',
@@ -102,8 +102,8 @@ export default function LandingPage() {
                 <span className="text-teal-600">growing your business</span>
               </h1>
               <p className="mt-5 max-w-xl text-lg text-slate-600">
-                Never miss a customer again. AI employees that answer calls and chats, book
-                appointments, follow up with leads, and request reviews — 24 hours a day, 7 days a
+                Never miss a customer again. AI employees that answer calls and chats, capture
+                appointment requests, follow up with leads, and request reviews — 24 hours a day, 7 days a
                 week.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-start">
@@ -154,8 +154,8 @@ export default function LandingPage() {
             </div>
             <div className="flex justify-start">
               <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2.5 text-sm text-slate-800">
-                I'm sorry to hear that! We offer same-day emergency service in your area. I can have
-                a technician out at 2:30 PM today. Shall I book that?
+                I'm sorry to hear that! We offer same-day emergency service in your area. I can
+                request a technician visit for 2:30 PM today. Shall I send that request?
               </div>
             </div>
             <div className="flex justify-end">
@@ -166,12 +166,12 @@ export default function LandingPage() {
             <div className="flex justify-start">
               <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2.5 text-sm text-slate-800">
                 Our emergency call-out is $120, credited toward any repair work. The technician will
-                give a full quote before starting. You're booked for 2:30 PM today.
+                give a full quote before starting. I've sent your 2:30 PM request; our team will confirm shortly.
               </div>
             </div>
             <div className="flex items-center gap-2 rounded-xl bg-teal-50 px-3 py-2 text-xs font-medium text-teal-700">
               <CheckCircle2 className="h-4 w-4" />
-              Lead captured · Appointment booked · Confirmation sent
+              Lead captured · Appointment requested · Pending team confirmation
             </div>
           </div>
         </div>
@@ -229,8 +229,8 @@ export default function LandingPage() {
       },
       {
         icon: CalendarCheck,
-        title: 'Lead captured & booked',
-        desc: 'The AI qualifies the lead, collects details, and books the appointment automatically.',
+        title: 'Lead captured & requested',
+        desc: 'The AI collects details and records an appointment request for your team to confirm.',
       },
       {
         icon: TrendingUp,
@@ -247,7 +247,7 @@ export default function LandingPage() {
               How it works
             </h2>
             <p className="mt-4 text-lg text-slate-600">
-              From first contact to booked appointment — without you lifting a finger.
+              From first contact to a confirmed appointment request — with your team in control.
             </p>
           </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

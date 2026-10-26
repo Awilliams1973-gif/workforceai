@@ -140,7 +140,7 @@ function AppointmentsContent() {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatBox icon={CalendarCheck} label="Booked this week" value={employee.actions.toString()} color="teal" />
+        <StatBox icon={CalendarCheck} label="Requests this week" value={employee.actions.toString()} color="teal" />
         <StatBox icon={CheckCircle2} label="Confirmed" value="6" color="green" />
         <StatBox icon={Clock} label="Reminders sent" value="14" color="blue" />
       </div>
@@ -149,8 +149,8 @@ function AppointmentsContent() {
         <h2 className="text-base font-semibold text-slate-900">How the AI Appointment Assistant works</h2>
         <div className="mt-4 space-y-3">
           {[
-            { icon: CalendarCheck, title: 'Offers available slots', desc: 'Shows customers your real availability and lets them pick.' },
-            { icon: Send, title: 'Sends confirmations', desc: 'Automatically sends a confirmation message when a booking is made.' },
+            { icon: CalendarCheck, title: 'Captures appointment requests', desc: 'Records the date, time, and service a customer asks for. Live calendar availability is not checked yet.' },
+            { icon: Send, title: 'Confirmation by your team', desc: 'Requests stay pending until you confirm them in Appointments.' },
             { icon: Clock, title: 'Sends reminders', desc: 'Reminds customers 24 hours before their appointment to reduce no-shows.' },
             { icon: CalendarCheck, title: 'Handles reschedules', desc: 'Lets customers reschedule without back-and-forth phone calls.' },
           ].map((f) => (
@@ -169,7 +169,7 @@ function AppointmentsContent() {
 
       <div className="card p-5">
         <h2 className="text-base font-semibold text-slate-900">Calendar connection</h2>
-        <p className="mt-1 text-sm text-slate-500">Connect your calendar so the AI can see real availability.</p>
+        <p className="mt-1 text-sm text-slate-500">Calendar sync is coming soon. Until then, the AI does not check real availability.</p>
         <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-100 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
@@ -177,10 +177,10 @@ function AppointmentsContent() {
             </div>
             <div>
               <p className="text-sm font-medium text-slate-900">Google Calendar</p>
-              <p className="text-xs text-slate-500">Connect to sync availability</p>
+              <p className="text-xs text-slate-500">Not available yet</p>
             </div>
           </div>
-          <button className="btn-ghost text-xs">Connect</button>
+          <button className="btn-ghost text-xs" disabled>Coming soon</button>
         </div>
       </div>
     </>

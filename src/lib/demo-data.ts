@@ -343,7 +343,7 @@ export const demoEmployees: AIEmployee[] = [
     id: 'receptionist',
     name: 'AI Receptionist',
     role: 'Answers calls & chats 24/7',
-    description: 'Never misses a customer. Answers questions, captures leads, and books appointments — even after hours.',
+    description: 'Never misses a customer. Answers questions, captures leads, and records appointment requests — even after hours.',
     status: 'active',
     icon: 'headset',
     conversations: 47,

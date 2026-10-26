@@ -39,7 +39,7 @@ export default function ReceptionistPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">AI Receptionist</h1>
-          <p className="mt-1 text-sm text-slate-500">Answers calls and chats 24/7, captures every lead, books appointments.</p>
+          <p className="mt-1 text-sm text-slate-500">Answers calls and chats 24/7, captures every lead, records appointment requests.</p>
         </div>
         <button
           onClick={() => toggleStatus(receptionist.id)}
@@ -73,7 +73,7 @@ export default function ReceptionistPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatBox icon={MessageSquare} label="Conversations today" value="12" color="teal" />
         <StatBox icon={Users} label="Leads captured" value="8" color="blue" />
-        <StatBox icon={CalendarCheck} label="Appointments booked" value="5" color="green" />
+        <StatBox icon={CalendarCheck} label="Appointment requests" value="5" color="green" />
       </div>
 
       {/* Channels */}
@@ -94,7 +94,7 @@ export default function ReceptionistPage() {
           {[
             { icon: MessageSquare, title: 'Answers questions', desc: 'Uses your knowledge base to answer FAQs, pricing, hours, and service questions.' },
             { icon: Users, title: 'Captures leads', desc: 'Collects name, phone, email, and service needed for every inquiry.' },
-            { icon: CalendarCheck, title: 'Books appointments', desc: 'Offers available slots and confirms bookings automatically.' },
+            { icon: CalendarCheck, title: 'Records appointment requests', desc: 'Captures the requested date, time, and service. Your team confirms availability before the customer is booked.' },
             { icon: Headset, title: 'Hands off to you', desc: 'Escalates complex issues with a full conversation summary.' },
           ].map((f) => (
             <div key={f.title} className="flex items-start gap-3 rounded-xl bg-slate-50 p-4">
