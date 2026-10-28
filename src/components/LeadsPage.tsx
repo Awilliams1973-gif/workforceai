@@ -17,9 +17,22 @@ type Lead = {
   status: LeadStatus;
   value: number;
   notes: string;
-  next_follow_up: string;
+  next_follow_up: string | null;
   created_at: string;
 };
+
+const toFollowUpDateInput = (value: string | null) =>
+  value ? new Date(value).toISOString().slice(0, 10) : '';
+
+const formatFollowUpDate = (value: string | null) =>
+  value
+    ? new Date(value).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      })
+    : 'Not scheduled';
 
 const statusFilters: (LeadStatus | 'all')[] = ['all', 'new', 'contacted', 'qualified', 'won', 'lost'];
 
@@ -109,6 +122,34 @@ export default function LeadsPage() {
     if (!updateError) {
       setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
       setSelected((prev) => (prev?.id === id ? { ...prev, status } : prev));
+    }
+  };
+
+  const updateFollowUp = async (id: string, date: string | null) => {
+    const nextFollowUp = date ? `${date}T12:00:00.000Z` : null;
+    try {
+      const { data, error: updateError } = await supabase
+        .from('leads')
+        .update({ next_follow_up: nextFollowUp })
+        .eq('id', id)
+        .select('id, next_follow_up')
+        .maybeSingle();
+
+      if (updateError || !data) {
+        console.error('Follow-up update error:', updateError ?? 'No lead returned after update.');
+        return false;
+      }
+
+      setLeads((prev) => prev.map((lead) =>
+        lead.id === id ? { ...lead, next_follow_up: data.next_follow_up } : lead
+      ));
+      setSelected((prev) =>
+        prev?.id === id ? { ...prev, next_follow_up: data.next_follow_up } : prev
+      );
+      return true;
+    } catch (err) {
+      console.error('Follow-up update failed:', err);
+      return false;
     }
   };
 
@@ -277,7 +318,9 @@ export default function LeadsPage() {
                     <td className="px-5 py-3">
                       <span className={`badge ${statusStyles[lead.status]}`}>{lead.status}</span>
                     </td>
-                    <td className="px-5 py-3 text-sm text-slate-500">{lead.next_follow_up || '—'}</td>
+                    <td className="px-5 py-3 text-sm text-slate-500">
+                      {lead.next_follow_up ? formatFollowUpDate(lead.next_follow_up) : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -289,9 +332,11 @@ export default function LeadsPage() {
       {/* Detail drawer */}
       {selected && (
         <LeadDrawer
+          key={selected.id}
           lead={selected}
           onClose={() => setSelected(null)}
           onUpdateStatus={(s) => updateStatus(selected.id, s)}
+          onUpdateFollowUp={(date) => updateFollowUp(selected.id, date)}
           onDelete={() => deleteLead(selected.id)}
         />
       )}
@@ -304,19 +349,42 @@ export default function LeadsPage() {
   );
 }
 
-function LeadDrawer({ lead, onClose, onUpdateStatus, onDelete }: {
+function LeadDrawer({ lead, onClose, onUpdateStatus, onUpdateFollowUp, onDelete }: {
   lead: Lead;
   onClose: () => void;
   onUpdateStatus: (s: LeadStatus) => void;
+  onUpdateFollowUp: (date: string | null) => Promise<boolean>;
   onDelete: () => void;
 }) {
+  const [followUpDate, setFollowUpDate] = useState(toFollowUpDateInput(lead.next_follow_up));
+  const [savedFollowUpDate, setSavedFollowUpDate] = useState(toFollowUpDateInput(lead.next_follow_up));
+  const [savingFollowUp, setSavingFollowUp] = useState(false);
+  const [followUpError, setFollowUpError] = useState<string | null>(null);
+
+  const saveFollowUp = async (date: string | null) => {
+    setSavingFollowUp(true);
+    setFollowUpError(null);
+    try {
+      const updated = await onUpdateFollowUp(date);
+      if (!updated) {
+        setFollowUpError('Unable to save the follow-up date. Please try again.');
+        return;
+      }
+      const nextDate = date ?? '';
+      setFollowUpDate(nextDate);
+      setSavedFollowUpDate(nextDate);
+    } finally {
+      setSavingFollowUp(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} />
       <div className="relative h-full w-full max-w-md overflow-y-auto bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-900">Lead details</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+          <button onClick={onClose} aria-label="Close lead details" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -346,8 +414,46 @@ function LeadDrawer({ lead, onClose, onUpdateStatus, onDelete }: {
             <Detail label="Service" value={lead.service || 'Not specified'} />
             <Detail label="Source" value={lead.source} />
             <Detail label="Estimated value" value={`$${Number(lead.value).toLocaleString()}`} />
-            <Detail label="Next follow-up" value={lead.next_follow_up || 'Not scheduled'} />
+            <Detail label="Next follow-up" value={formatFollowUpDate(lead.next_follow_up)} />
             <Detail label="Created" value={new Date(lead.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} />
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <label htmlFor="lead-follow-up-date" className="mb-2 block text-sm font-medium text-slate-700">
+              Schedule a team follow-up
+            </label>
+            <p className="mb-3 text-xs text-slate-500">
+              This is a manual reminder for your team. It will not contact the customer.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                id="lead-follow-up-date"
+                aria-label="Next follow-up date"
+                className="input w-auto"
+                type="date"
+                value={followUpDate}
+                onChange={(event) => setFollowUpDate(event.target.value)}
+              />
+              <button
+                onClick={() => saveFollowUp(followUpDate)}
+                disabled={!followUpDate || followUpDate === savedFollowUpDate || savingFollowUp}
+                className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {savingFollowUp ? 'Saving…' : 'Save date'}
+              </button>
+              {savedFollowUpDate && (
+                <button
+                  onClick={() => saveFollowUp(null)}
+                  disabled={savingFollowUp}
+                  className="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Clear date
+                </button>
+              )}
+            </div>
+            {followUpError && (
+              <p role="alert" className="mt-2 text-sm text-red-600">{followUpError}</p>
+            )}
           </div>
 
           {lead.notes && (
