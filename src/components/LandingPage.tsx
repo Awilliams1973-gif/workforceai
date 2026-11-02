@@ -62,7 +62,7 @@ const faqs = [
   },
   {
     q: 'Can I cancel anytime?',
-    a: 'Yes. There are no long-term contracts. You can upgrade, downgrade, or cancel from your account settings at any time.',
+    a: 'Yes. There are no long-term contracts, and paid plans are not available yet. When billing launches, you will be able to change or cancel your plan anytime.',
   },
 ];
 
@@ -119,7 +119,7 @@ export default function LandingPage() {
               <div className="mt-6 flex items-center gap-4 text-sm text-slate-500">
                 <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-teal-600" /> Free to start</span>
                 <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-teal-600" /> No credit card</span>
-                <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-teal-600" /> Cancel anytime</span>
+                <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-teal-600" /> Free during testing</span>
               </div>
             </div>
 

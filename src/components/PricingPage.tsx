@@ -47,7 +47,7 @@ export default function PricingPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Simple, transparent pricing</h1>
-        <p className="mt-2 text-lg text-slate-600">Choose the plan that fits your business. Upgrade or downgrade anytime.</p>
+        <p className="mt-2 text-lg text-slate-600">WorkforceAI is free to try during testing. Paid plans are coming soon.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
