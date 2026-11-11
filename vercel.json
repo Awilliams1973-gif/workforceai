@@ -10,6 +10,11 @@
       ],
       "destination": "https://planetlion.com/$1",
       "permanent": true
+    },
+    {
+      "source": "/pricing",
+      "destination": "/#pricing",
+      "permanent": false
     }
   ],
   "headers": [
