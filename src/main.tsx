@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/react';
 import * as Sentry from '@sentry/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { redactPII } from './lib/sentry-redaction';
+import { infoViewPaths } from './lib/store';
 import App from './App.tsx';
 import './index.css';
 
@@ -86,8 +87,13 @@ const app = (
   </StrictMode>
 );
 
-if (rootElement.hasChildNodes()) {
+// Only the public routes are prerendered; other paths receive the home page markup.
+const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+const isPrerenderedPath = normalizedPath === '/' || Object.values(infoViewPaths).includes(normalizedPath);
+
+if (rootElement.hasChildNodes() && isPrerenderedPath) {
   hydrateRoot(rootElement, app);
 } else {
+  rootElement.replaceChildren();
   createRoot(rootElement).render(app);
 }
