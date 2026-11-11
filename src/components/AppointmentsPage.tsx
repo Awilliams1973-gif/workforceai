@@ -4,7 +4,7 @@ import { useAppStore } from '@/lib/store';
 import type { AppointmentStatus } from '@/lib/types';
 import {
   CalendarDays, Clock, Phone, X, CheckCircle2, CalendarX2, RotateCcw,
-  Plus, RefreshCw, Inbox,
+  Plus, RefreshCw, Inbox, Trash2,
 } from 'lucide-react';
 import { LoadingSkeleton } from './LoadingSkeleton';
 
@@ -81,7 +81,8 @@ export default function AppointmentsPage() {
         .from('appointments')
         .select('*')
         .eq('business_id', membership.business_id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (fetchError) {
         console.error('Fetch error:', fetchError);
@@ -111,6 +112,17 @@ export default function AppointmentsPage() {
       setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
       setSelected((prev) => (prev?.id === id ? { ...prev, status } : prev));
     }
+  };
+
+  const deleteAppointment = async (id: string) => {
+    setError(null);
+    const { error: deleteError } = await supabase.from('appointments').delete().eq('id', id);
+    if (deleteError) {
+      setError('Could not delete the appointment. Please try again.');
+      return;
+    }
+    setAppointments((prev) => prev.filter((a) => a.id !== id));
+    setSelected(null);
   };
 
   const addAppointment = async (appt: Omit<Appointment, 'id' | 'created_at' | 'user_id'>) => {
@@ -252,6 +264,7 @@ export default function AppointmentsPage() {
           appt={selected}
           onClose={() => setSelected(null)}
           onUpdateStatus={(s) => updateStatus(selected.id, s)}
+          onDelete={() => deleteAppointment(selected.id)}
         />
       )}
 
@@ -263,10 +276,11 @@ export default function AppointmentsPage() {
   );
 }
 
-function AppointmentModal({ appt, onClose, onUpdateStatus }: {
+function AppointmentModal({ appt, onClose, onUpdateStatus, onDelete }: {
   appt: Appointment;
   onClose: () => void;
   onUpdateStatus: (s: AppointmentStatus) => void;
+  onDelete: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -332,6 +346,18 @@ function AppointmentModal({ appt, onClose, onUpdateStatus }: {
           <button onClick={() => onUpdateStatus('cancelled')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100">
             <CalendarX2 className="h-4 w-4" />
             Cancel
+          </button>
+        </div>
+
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <button
+            onClick={() => {
+              if (window.confirm('Delete this appointment permanently?')) onDelete();
+            }}
+            className="inline-flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete appointment
           </button>
         </div>
       </div>

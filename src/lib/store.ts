@@ -14,6 +14,7 @@ type AppState = {
 };
 
 export const infoViewPaths: Partial<Record<View, string>> = {
+  about: '/about',
   privacy: '/privacy',
   terms: '/terms',
   refund: '/refund',

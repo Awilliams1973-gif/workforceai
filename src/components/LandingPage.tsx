@@ -1,5 +1,24 @@
 import { useAppStore } from '@/lib/store';
-import { plans, demoEmployees } from '@/lib/demo-data';
+import { demoEmployees } from '@/lib/demo-data';
+import { PLANS } from '@/lib/stripe';
+
+const plans = [
+  {
+    id: 'free',
+    name: 'Free',
+    price: 0,
+    tagline: 'Try the AI Receptionist on your site',
+    features: ['AI Receptionist on your website', 'Lead capture & basic dashboard'],
+    highlight: false,
+    cta: 'Start free',
+  },
+  ...PLANS.map((p) => ({
+    ...p,
+    tagline: p.id === 'starter' ? 'For solo owners getting started' : 'For growing teams with more demand',
+    highlight: p.id === 'professional',
+    cta: 'Get started',
+  })),
+];
 import {
   Headset,
   Handshake,
@@ -58,11 +77,11 @@ const faqs = [
   },
   {
     q: 'How much does it cost?',
-    a: 'You can get started free while we finalize the pricing plans. Once billing is live, we’ll share the right option for your business size and needs.',
+    a: 'You can start free with no credit card. Paid plans are Starter at $49/month and Professional at $149/month, and you can subscribe from your dashboard under Plans & Billing.',
   },
   {
     q: 'Can I cancel anytime?',
-    a: 'Yes. There are no long-term contracts, and paid plans are not available yet. When billing launches, you will be able to change or cancel your plan anytime.',
+    a: 'Yes. There are no long-term contracts. To change or cancel a paid plan, email support and we will take care of it.',
   },
 ];
 
@@ -376,10 +395,10 @@ export default function LandingPage() {
               Simple, honest pricing
             </h2>
             <p className="mt-4 text-lg text-slate-600">
-              Plans are coming soon. Start free and we’ll unlock billing when checkout is ready.
+              Start free, no credit card. Upgrade from your dashboard when you’re ready.
             </p>
           </div>
-          <div className="mt-12 grid gap-6 lg:grid-cols-4">
+          <div className="mt-12 grid gap-6 lg:grid-cols-3">
             {plans.map((plan) => (
               <div
                 key={plan.id}
@@ -406,10 +425,10 @@ export default function LandingPage() {
                 </ul>
                 <button
                   type="button"
-                  disabled
-                  className="mt-6 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-slate-100 px-4 py-2.5 font-semibold text-slate-500 opacity-70"
+                  onClick={() => setView('auth')}
+                  className={`${plan.highlight ? 'btn-primary' : 'btn-secondary'} mt-6 w-full`}
                 >
-                  Coming soon
+                  {plan.cta}
                 </button>
               </div>
             ))}

@@ -5,6 +5,7 @@ import {
   extractAppointmentInfo,
   extractLeadInfo,
 } from "./lead-extraction.ts";
+import { notifyOwner } from "../_shared/notify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,7 +70,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { messages, sessionId, conversationId, turnstileToken } = await req.json();
+    const { action, messages, sessionId, conversationId, turnstileToken } = await req.json();
     if (typeof sessionId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
       return new Response(JSON.stringify({ error: "A valid chat session is required" }), {
         status: 400,
@@ -81,6 +82,96 @@ Deno.serve(async (req: Request) => {
         || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(conversationId))) {
       return new Response(JSON.stringify({ error: "A valid chat conversation is required" }), {
         status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "fetch_human_replies") {
+      if (!conversationId) {
+        return new Response(JSON.stringify({ error: "A valid chat conversation is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseKey = Deno.env.get("SB_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (!supabaseUrl || !supabaseKey) {
+        return new Response(JSON.stringify({ error: "AI Receptionist is not configured on the server" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      const rateLimitKeys = await Promise.all([
+        sha256(`ai-chat:replies:ip:${clientIp}`),
+        sha256(`ai-chat:replies:session:${sessionId}`),
+      ]);
+      const rateLimitResults = await Promise.all([
+        supabase.rpc("consume_rate_limit", {
+          p_key: rateLimitKeys[0],
+          p_limit: 1200,
+          p_window_seconds: 3600,
+        }),
+        supabase.rpc("consume_rate_limit", {
+          p_key: rateLimitKeys[1],
+          p_limit: 300,
+          p_window_seconds: 3600,
+        }),
+      ]);
+      const rateLimitError = rateLimitResults.find((result) => result.error)?.error;
+      if (rateLimitError) {
+        console.error("Chat reply rate-limit check failed:", rateLimitError);
+        return new Response(JSON.stringify({ error: "AI Receptionist is temporarily unavailable" }), {
+          status: 503,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (rateLimitResults.some((result) => !result.data)) {
+        return new Response(JSON.stringify({ error: "Too many chat reply checks. Please try again later." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" },
+        });
+      }
+
+      const { data: conversation, error: conversationError } = await supabase
+        .from("chat_conversations")
+        .select("id")
+        .eq("id", conversationId)
+        .eq("session_id", sessionId)
+        .maybeSingle();
+      if (conversationError) {
+        console.error("Failed to verify chat reply session:", conversationError);
+        return new Response(JSON.stringify({ error: "AI Receptionist is temporarily unavailable" }), {
+          status: 503,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!conversation) {
+        return new Response(JSON.stringify({ error: "Chat conversation is unavailable" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: replies, error: repliesError } = await supabase
+        .from("chat_messages")
+        .select("id, sender, text, created_at")
+        .eq("conversation_id", conversation.id)
+        .eq("sender", "human")
+        .order("created_at", { ascending: true })
+        .limit(100);
+      if (repliesError) {
+        console.error("Failed to fetch human chat replies:", repliesError);
+        return new Response(JSON.stringify({ error: "AI Receptionist is temporarily unavailable" }), {
+          status: 503,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ messages: replies || [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -124,7 +215,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseKey = Deno.env.get("SB_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !supabaseKey) {
       return new Response(
         JSON.stringify({ error: "AI Receptionist is not configured on the server" }),
@@ -346,6 +437,16 @@ Deno.serve(async (req: Request) => {
             persistenceFailed = true;
           } else {
             leadCaptured = true;
+            await notifyOwner({
+              subject: `New lead: ${leadName}`,
+              lines: [
+                ["Name", leadName],
+                ["Email", leadInfo.email],
+                ["Phone", leadInfo.phone],
+                ["Service", appointmentInfo?.service || lastUserMessage?.content || "General inquiry"],
+                ["Source", "AI Receptionist chat"],
+              ],
+            }, Deno.env);
           }
         }
 
@@ -396,6 +497,16 @@ Deno.serve(async (req: Request) => {
               persistenceFailed = true;
             } else {
               appointmentCreated = true;
+              await notifyOwner({
+                subject: `New appointment request: ${leadName}`,
+                lines: [
+                  ["Name", leadName],
+                  ["Phone", leadInfo.phone],
+                  ["Service", appointmentInfo.service],
+                  ["Requested date", appointmentInfo.date],
+                  ["Requested time", appointmentInfo.time],
+                ],
+              }, Deno.env);
             }
           }
         }

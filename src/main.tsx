@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { Analytics } from '@vercel/analytics/react';
 import * as Sentry from '@sentry/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -74,7 +74,8 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root')!;
+const app = (
   <StrictMode>
     <Sentry.ErrorBoundary fallback={<ErrorBoundary><div>Error</div></ErrorBoundary>}>
       <ErrorBoundary>
@@ -84,3 +85,9 @@ createRoot(document.getElementById('root')!).render(
     </Sentry.ErrorBoundary>
   </StrictMode>
 );
+
+if (rootElement.hasChildNodes()) {
+  hydrateRoot(rootElement, app);
+} else {
+  createRoot(rootElement).render(app);
+}

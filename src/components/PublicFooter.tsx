@@ -55,7 +55,7 @@ export default function PublicFooter() {
           <div>
             <h4 className="text-sm font-semibold text-white">Company</h4>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><button type="button" onClick={() => scrollToSection('how-it-works')} className="text-slate-400 hover:text-white">About</button></li>
+              <li><button type="button" onClick={() => setView('about')} className="text-slate-400 hover:text-white">About</button></li>
               <li><button type="button" onClick={() => setView('contact')} className="text-slate-400 hover:text-white">Contact</button></li>
             </ul>
           </div>

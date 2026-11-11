@@ -12,6 +12,7 @@ describe('info pages', () => {
   });
 
   it('maps known paths to views and defaults to home', () => {
+    expect(viewFromPath('/about')).toBe('about');
     expect(viewFromPath('/privacy')).toBe('privacy');
     expect(viewFromPath('/terms/')).toBe('terms');
     expect(viewFromPath('/refund')).toBe('refund');
@@ -22,6 +23,10 @@ describe('info pages', () => {
 
   it('footer links open the matching page and update the URL', () => {
     render(<PublicFooter />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'About' }));
+    expect(useAppStore.getState().view).toBe('about');
+    expect(window.location.pathname).toBe('/about');
 
     fireEvent.click(screen.getByRole('button', { name: 'Privacy Policy' }));
     expect(useAppStore.getState().view).toBe('privacy');
@@ -44,7 +49,11 @@ describe('info pages', () => {
   });
 
   it('renders each page with its heading', () => {
-    const { rerender } = render(<InfoPages view="privacy" />);
+    const { rerender } = render(<InfoPages view="about" />);
+    expect(screen.getByRole('heading', { level: 1, name: 'About WorkforceAI' })).toBeInTheDocument();
+    expect(screen.getByText(/local service businesses respond to customers faster/i)).toBeInTheDocument();
+
+    rerender(<InfoPages view="privacy" />);
     expect(screen.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeInTheDocument();
 
     rerender(<InfoPages view="terms" />);

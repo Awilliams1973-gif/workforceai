@@ -8,8 +8,7 @@ const corsHeaders = {
 
 const PLAN_CONFIG: Record<string, { name: string; amount: number }> = {
   starter: { name: "WorkforceAI Starter", amount: 4900 },
-  growth: { name: "WorkforceAI Growth", amount: 14900 },
-  pro: { name: "WorkforceAI Pro", amount: 39900 },
+  professional: { name: "WorkforceAI Professional", amount: 14900 },
 };
 
 Deno.serve(async (req: Request) => {
@@ -27,7 +26,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseAnonKey = (Deno.env.get("SB_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY"))!;
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -53,7 +52,7 @@ Deno.serve(async (req: Request) => {
     const runtimeStripeKey = Deno.env.get("STRIPE_SECRET_KEY")?.trim();
     const serviceClient = createClient(
       supabaseUrl,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      (Deno.env.get("SB_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))!
     );
     const { data: secretRow } = await serviceClient
       .from("app_secrets")
@@ -104,9 +103,11 @@ Deno.serve(async (req: Request) => {
     });
 
     if (!sessionResponse.ok) {
-      const err = await sessionResponse.json();
+      const err = await sessionResponse.json().catch(() => ({}));
+      const safeMessage = String(err?.error?.message ?? "").replace(/[sr]k_(live|test)_\w+/g, "[redacted]").slice(0, 200);
+      console.error("Stripe checkout session failed:", sessionResponse.status, err?.error?.type, err?.error?.code, err?.error?.param, safeMessage);
       return new Response(
-        JSON.stringify({ error: err.error?.message || "Failed to create checkout session" }),
+        JSON.stringify({ error: "Failed to create checkout session" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

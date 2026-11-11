@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/lib/store';
+import { LeadSchema } from '@/lib/validation';
 import type { LeadStatus } from '@/lib/types';
 import {
   Search, Filter, ArrowUpDown, Phone, Mail, X, Plus, RefreshCw, Inbox, Trash2,
@@ -35,6 +36,7 @@ const formatFollowUpDate = (value: string | null) =>
     : 'Not scheduled';
 
 const statusFilters: (LeadStatus | 'all')[] = ['all', 'new', 'contacted', 'qualified', 'won', 'lost'];
+const PAGE_SIZE = 25;
 
 const statusStyles: Record<LeadStatus, string> = {
   new: 'bg-teal-100 text-teal-700',
@@ -51,10 +53,21 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<'value' | 'date'>('date');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<Lead | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -79,40 +92,47 @@ export default function LeadsPage() {
         return;
       }
 
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('leads')
-        .select('*')
-        .eq('business_id', membership.business_id)
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' })
+        .eq('business_id', membership.business_id);
+
+      if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+
+      const term = debouncedSearch.replace(/[%*_\\,()".]/g, ' ').trim();
+      if (term) {
+        query = query.or(`name.ilike.*${term}*,service.ilike.*${term}*,email.ilike.*${term}*`);
+      }
+
+      query = sortBy === 'value'
+        ? query.order('value', { ascending: false }).order('id')
+        : query.order('created_at', { ascending: false }).order('id');
+
+      const from = (page - 1) * PAGE_SIZE;
+      const { data, count, error: fetchError } = await query.range(from, from + PAGE_SIZE - 1);
 
       if (fetchError) {
         console.error('Fetch error:', fetchError);
         setError('Unable to load leads. Please try again.');
+      } else if ((data?.length ?? 0) === 0 && page > 1 && (count ?? 0) > 0) {
+        setPage(Math.ceil((count ?? 0) / PAGE_SIZE));
       } else {
         setLeads((data || []) as Lead[]);
+        setTotal(count ?? 0);
       }
     } catch (err) {
       console.error('Fetch leads error:', err);
       setError('Unable to load leads. Please try again.');
     }
     setLoading(false);
-  }, [userId]);
+  }, [userId, statusFilter, debouncedSearch, sortBy, page]);
 
   useEffect(() => {
     fetchLeads();
   }, [fetchLeads]);
 
-  const filtered = leads
-    .filter((l) => statusFilter === 'all' || l.status === statusFilter)
-    .filter((l) =>
-      l.name.toLowerCase().includes(search.toLowerCase()) ||
-      l.service.toLowerCase().includes(search.toLowerCase()) ||
-      l.email.toLowerCase().includes(search.toLowerCase())
-    )
-    .sort((a, b) => sortBy === 'value'
-      ? Number(b.value) - Number(a.value)
-      : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+  const hasFilters = statusFilter !== 'all' || debouncedSearch !== '';
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const updateStatus = async (id: string, status: LeadStatus) => {
     const { error: updateError } = await supabase
@@ -156,8 +176,8 @@ export default function LeadsPage() {
   const deleteLead = async (id: string) => {
     const { error: deleteError } = await supabase.from('leads').delete().eq('id', id);
     if (!deleteError) {
-      setLeads((prev) => prev.filter((l) => l.id !== id));
       setSelected(null);
+      await fetchLeads();
     }
   };
 
@@ -181,6 +201,22 @@ export default function LeadsPage() {
         return;
       }
 
+      const { data: duplicate, error: duplicateError } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('business_id', userBiz.business_id)
+        .ilike('email', String(lead.email).trim().replace(/[\\%_]/g, '\\$&'))
+        .limit(1);
+      if (duplicateError) {
+        console.error('Duplicate check error:', duplicateError);
+        setError('Unable to add lead. Please try again.');
+        return;
+      }
+      if (duplicate && duplicate.length > 0) {
+        setError('A lead with this email already exists.');
+        return;
+      }
+
       const { data, error: insertError } = await supabase
         .from('leads')
         .insert({
@@ -197,8 +233,9 @@ export default function LeadsPage() {
         return;
       }
 
-      setLeads((prev) => [data as Lead, ...prev]);
       setShowAddForm(false);
+      if (page === 1) await fetchLeads();
+      else setPage(1);
     } catch (err) {
       console.error('Add lead error:', err);
       setError('Unable to add lead. Please try again.');
@@ -237,7 +274,7 @@ export default function LeadsPage() {
             <select
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-teal-500 focus:outline-none"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as LeadStatus | 'all')}
+              onChange={(e) => { setStatusFilter(e.target.value as LeadStatus | 'all'); setPage(1); }}
             >
               {statusFilters.map((s) => (
                 <option key={s} value={s}>{s === 'all' ? 'All statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -245,7 +282,7 @@ export default function LeadsPage() {
             </select>
           </div>
           <button
-            onClick={() => setSortBy(sortBy === 'value' ? 'date' : 'value')}
+            onClick={() => { setSortBy(sortBy === 'value' ? 'date' : 'value'); setPage(1); }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
           >
             <ArrowUpDown className="h-4 w-4" />
@@ -260,20 +297,20 @@ export default function LeadsPage() {
       {/* Table */}
       {loading ? (
         <LoadingSkeleton label="Loading leads" />
-      ) : filtered.length === 0 ? (
+      ) : leads.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-16 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
             <Inbox className="h-7 w-7" />
           </div>
           <h3 className="mt-4 text-base font-semibold text-slate-900">
-            {leads.length === 0 ? 'No leads yet' : 'No matches found'}
+            {!hasFilters ? 'No leads yet' : 'No matches found'}
           </h3>
           <p className="mt-1 text-sm text-slate-500">
-            {leads.length === 0
+            {!hasFilters
               ? 'When your AI Receptionist captures a lead, or you add one manually, it will appear here.'
               : 'Try a different search or filter.'}
           </p>
-          {leads.length === 0 && (
+          {!hasFilters && (
             <button onClick={() => setShowAddForm(true)} className="btn-primary mt-4 text-sm">
               <Plus className="h-4 w-4" />
               Add your first lead
@@ -295,7 +332,7 @@ export default function LeadsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((lead) => (
+                {leads.map((lead) => (
                   <tr
                     key={lead.id}
                     onClick={() => setSelected(lead)}
@@ -326,6 +363,28 @@ export default function LeadsPage() {
               </tbody>
             </table>
           </div>
+          <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3 text-sm text-slate-500">
+            <span>
+              {(page - 1) * PAGE_SIZE + 1}–{(page - 1) * PAGE_SIZE + leads.length} of {total.toLocaleString()}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span>Page {page} of {totalPages}</span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -343,7 +402,7 @@ export default function LeadsPage() {
 
       {/* Add lead form */}
       {showAddForm && (
-        <AddLeadForm onClose={() => setShowAddForm(false)} onAdd={addLead} />
+        <AddLeadForm onClose={() => setShowAddForm(false)} onAdd={addLead} existingEmails={leads.map((l) => l.email)} />
       )}
     </div>
   );
@@ -497,8 +556,9 @@ function LeadDrawer({ lead, onClose, onUpdateStatus, onUpdateFollowUp, onDelete 
   );
 }
 
-function AddLeadForm({ onClose, onAdd }: {
+function AddLeadForm({ onClose, onAdd, existingEmails }: {
   onClose: () => void;
+  existingEmails: (string | null)[];
   onAdd: (lead: Omit<Lead, 'id' | 'created_at' | 'user_id' | 'next_follow_up'>) => void;
 }) {
   const [form, setForm] = useState({
@@ -512,11 +572,34 @@ function AddLeadForm({ onClose, onAdd }: {
     notes: '',
   });
 
-  const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const update = (key: string, value: string) => {
+    setFormError(null);
+    setForm((p) => ({ ...p, [key]: value }));
+  };
 
   const handleSubmit = () => {
     if (!form.name.trim() || !form.phone.trim() || !form.email.trim() || !form.service.trim() || !form.source.trim()) return;
-    onAdd({ ...form, value: Number(form.value) || 0 });
+
+    const phone = form.phone.trim();
+    const email = form.email.trim();
+    const phoneCheck = LeadSchema.shape.phone.safeParse(phone);
+    if (!phoneCheck.success) {
+      setFormError(phoneCheck.error.issues[0].message);
+      return;
+    }
+    const emailCheck = LeadSchema.shape.email.safeParse(email);
+    if (!emailCheck.success) {
+      setFormError(emailCheck.error.issues[0].message);
+      return;
+    }
+    if (existingEmails.some((e) => e?.trim().toLowerCase() === email.toLowerCase())) {
+      setFormError('A lead with this email already exists.');
+      return;
+    }
+
+    onAdd({ ...form, name: form.name.trim(), phone, email, value: Number(form.value) || 0 });
   };
 
   return (
@@ -563,6 +646,7 @@ function AddLeadForm({ onClose, onAdd }: {
             <textarea className="input min-h-[80px] resize-y" value={form.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Any details about this lead..." />
           </div>
         </div>
+        {formError && <p role="alert" className="mt-4 text-sm text-red-600">{formError}</p>}
         <div className="mt-6 flex justify-end gap-3">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
           <button onClick={handleSubmit} disabled={!form.name.trim() || !form.phone.trim() || !form.email.trim() || !form.service.trim() || !form.source.trim()} className="btn-primary disabled:cursor-not-allowed disabled:opacity-50">

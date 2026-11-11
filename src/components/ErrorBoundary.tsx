@@ -57,7 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="mt-4 text-center text-gray-600">
               We encountered an unexpected error. Please try refreshing the page.
             </p>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <div className="mt-4 rounded-md bg-gray-100 p-3">
                 <p className="text-xs font-mono text-gray-700">
                   {this.state.error.message}

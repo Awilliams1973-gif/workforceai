@@ -4,9 +4,9 @@ import { useAppStore } from '@/lib/store';
 import type { View } from '@/lib/types';
 
 const CONTACT_EMAIL = 'altwanwilliams22@gmail.com';
-const LAST_UPDATED = 'October 18, 2026';
+const LAST_UPDATED = 'October 25, 2026';
 
-type InfoView = Extract<View, 'privacy' | 'terms' | 'refund' | 'contact'>;
+type InfoView = Extract<View, 'about' | 'privacy' | 'terms' | 'refund' | 'contact'>;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -35,6 +35,47 @@ function EmailLink() {
   );
 }
 
+function AboutPage() {
+  return (
+    <>
+      <p className="text-lg leading-relaxed text-slate-700">
+        WorkforceAI helps local service businesses respond to customers faster, capture more opportunities, and spend less time tied to the phone. We bring practical AI assistance into the everyday work of plumbing, HVAC, electrical, roofing, and contracting teams.
+      </p>
+      <Section title="Built for the realities of service work">
+        <p>
+          When owners and technicians are on a job, they cannot always answer every call or message. A missed inquiry can mean a customer moves on before the business has a chance to respond. WorkforceAI is designed to help teams stay responsive while they focus on serving customers in the field.
+        </p>
+      </Section>
+      <Section title="One connected workspace">
+        <p>
+          WorkforceAI brings customer conversations, leads, appointment requests, and business information together in one place. The AI Receptionist can answer common questions, collect contact details, and route requests to the team. Other AI employee tools support sales follow-up, appointment coordination, marketing drafts, and review management.
+        </p>
+      </Section>
+      <Section title="AI with people in control">
+        <p>
+          AI should assist a business, not make unchecked commitments on its behalf. Business owners provide the services, hours, policies, and other details the AI uses. Teams can review conversations, follow up with leads, and handle requests that need a person. Appointment requests should be confirmed by the business before customers rely on them.
+        </p>
+      </Section>
+      <Section title="Our approach">
+        <List items={[
+          'Focus on useful workflows for local service businesses.',
+          'Make customer requests visible and easy for the team to follow up.',
+          'Use business-provided information rather than inventing prices or policies.',
+          'Keep owners in control of customer commitments and business decisions.',
+        ]} />
+      </Section>
+      <Section title="Get started">
+        <p>
+          Explore the free AI business audit to estimate where unanswered inquiries may be costing your business opportunities, or contact us with questions about WorkforceAI.
+        </p>
+        <p>
+          WorkforceAI is evolving with feedback from service businesses. We aim to make AI practical, transparent, and genuinely helpful for the people who run and serve those businesses.
+        </p>
+      </Section>
+    </>
+  );
+}
+
 function PrivacyPolicy() {
   return (
     <>
@@ -56,7 +97,7 @@ function PrivacyPolicy() {
       <Section title="How we use information">
         <List
           items={[
-            'To provide, operate, and improve the service, including answering customers, capturing leads, and booking appointments.',
+            'To provide, operate, and improve the service, including answering customers, capturing leads, and recording appointment requests.',
             'To send account emails such as confirmations and password resets.',
             'To protect the service against abuse, spam, and fraud.',
             'To respond to your questions and support requests.',
@@ -158,8 +199,9 @@ function TermsOfService() {
       </Section>
       <Section title="Fees">
         <p>
-          Paid plans are not yet available. If plans are introduced, pricing, billing terms, and cancellation details
-          will be shown before you are charged, and our Refund Policy will apply.
+          You can use WorkforceAI for free. Paid plans (Starter at $49/month and Professional at $149/month) are
+          billed monthly through Stripe when you subscribe from Plans &amp; Billing, and our Refund Policy applies.
+          To change or cancel a plan, email <EmailLink />.
         </p>
       </Section>
       <Section title="Availability and changes">
@@ -202,8 +244,10 @@ function RefundPolicy() {
       </Section>
       <Section title="Paid plans">
         <p>
-          Paid plans are not yet available. When they launch, the billing and cancellation terms will be shown
-          clearly before you are charged, and this policy will be updated with the specific refund terms.
+          Paid plans are billed monthly through Stripe. You can cancel at any time by emailing <EmailLink />, and
+          your plan stays active until the end of the period you have already paid for. If you believe a charge was
+          made in error, or you are unhappy in your first billing period, email us and we will review a refund
+          request promptly.
         </p>
       </Section>
       <Section title="Billing questions">
@@ -241,6 +285,7 @@ function ContactPage() {
 }
 
 const pages: Record<InfoView, { title: string; showUpdated: boolean; body: () => ReactNode }> = {
+  about: { title: 'About WorkforceAI', showUpdated: false, body: AboutPage },
   privacy: { title: 'Privacy Policy', showUpdated: true, body: PrivacyPolicy },
   terms: { title: 'Terms of Service', showUpdated: true, body: TermsOfService },
   refund: { title: 'Refund Policy', showUpdated: true, body: RefundPolicy },

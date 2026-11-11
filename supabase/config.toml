@@ -5,7 +5,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.stripe-checkout]
-verify_jwt = true
+# The function validates the caller with auth.getUser(); the gateway JWT check
+# cannot validate tokens once legacy JWT API keys are disabled.
+verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false

@@ -15,6 +15,7 @@ export type View =
   | 'pricing'
   | 'settings'
   | 'audit-leads'
+  | 'about'
   | 'privacy'
   | 'terms'
   | 'refund'

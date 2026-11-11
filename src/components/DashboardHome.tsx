@@ -48,18 +48,33 @@ type Appointment = {
   status: string;
 };
 
-type Conversation = {
-  id: string;
-  visitor_name: string | null;
-  status: string;
-  created_at: string;
+type DashboardSummary = {
+  total_leads: number;
+  new_leads: number;
+  pipeline_value: number;
+  estimated_revenue: number;
+  upcoming_appointments: number;
+  active_conversations: number;
+  total_conversations: number;
+  attention_leads: Lead[];
+  upcoming_list: Appointment[];
+};
+
+const emptySummary: DashboardSummary = {
+  total_leads: 0,
+  new_leads: 0,
+  pipeline_value: 0,
+  estimated_revenue: 0,
+  upcoming_appointments: 0,
+  active_conversations: 0,
+  total_conversations: 0,
+  attention_leads: [],
+  upcoming_list: [],
 };
 
 export default function DashboardHome() {
   const { setView, user } = useAppStore();
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary>(emptySummary);
   const [loading, setLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
   const [checkoutMsg, setCheckoutMsg] = useState<{ type: 'success' | 'cancel'; text: string } | null>(null);
@@ -76,21 +91,13 @@ export default function DashboardHome() {
 
     (async () => {
       try {
-        const [leadsRes, apptsRes, convosRes] = await Promise.all([
-          supabase.from('leads').select('*').order('created_at', { ascending: false }),
-          supabase.from('appointments').select('*').order('created_at', { ascending: false }),
-          supabase.from('chat_conversations').select('*').order('created_at', { ascending: false }),
-        ]);
-
-        const fetchErrors = [leadsRes, apptsRes, convosRes].filter((res) => res.error);
-        if (fetchErrors.length > 0) {
-          console.error('Dashboard data load errors:', fetchErrors.map((res) => res.error));
+        const { data, error } = await supabase.rpc('get_dashboard_summary');
+        if (error || !data) {
+          console.error('Dashboard data load error:', error);
           setDataError('Some dashboard data could not be loaded. Please try again in a moment.');
+        } else {
+          setSummary({ ...emptySummary, ...(data as Partial<DashboardSummary>) });
         }
-
-        setLeads((leadsRes.data || []) as Lead[]);
-        setAppointments((apptsRes.data || []) as Appointment[]);
-        setConversations((convosRes.data || []) as Conversation[]);
       } catch (err) {
         console.error('Dashboard data fetch failed:', err);
         setDataError('Unable to load dashboard data right now.');
@@ -100,16 +107,15 @@ export default function DashboardHome() {
     })();
   }, []);
 
-  const newLeads = leads.filter((l) => l.status === 'new').length;
-  const totalLeads = leads.length;
-  const upcomingAppts = appointments.filter((a) => a.status === 'requested' || a.status === 'scheduled' || a.status === 'confirmed');
-  const activeConvos = conversations.filter((c) => c.status === 'active' || c.status === 'awaiting_human');
-  const pipelineValue = leads
-    .filter((l) => l.status === 'new' || l.status === 'contacted' || l.status === 'qualified')
-    .reduce((sum, l) => sum + Number(l.value), 0);
-  const estimatedRevenue = leads
-    .filter((l) => l.status === 'won' || l.status === 'qualified')
-    .reduce((sum, l) => sum + Number(l.value), 0);
+  const newLeads = Number(summary.new_leads);
+  const totalLeads = Number(summary.total_leads);
+  const upcomingAppts = summary.upcoming_list;
+  const upcomingCount = Number(summary.upcoming_appointments);
+  const attentionLeads = summary.attention_leads;
+  const activeConvos = Number(summary.active_conversations);
+  const totalConvos = Number(summary.total_conversations);
+  const pipelineValue = Number(summary.pipeline_value);
+  const estimatedRevenue = Number(summary.estimated_revenue);
 
   const firstName = user?.email?.split('@')[0] || 'there';
 
@@ -141,8 +147,8 @@ export default function DashboardHome() {
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label="New leads" value={newLeads.toString()} sub={`${totalLeads} total in pipeline`} color="teal" />
-        <StatCard icon={CalendarDays} label="Upcoming appointments" value={upcomingAppts.length.toString()} sub="Requests, scheduled & confirmed" color="blue" />
-        <StatCard icon={MessageSquare} label="Active conversations" value={activeConvos.length.toString()} sub={activeConvos.length > 0 ? 'Needs attention' : 'All caught up'} color="amber" />
+        <StatCard icon={CalendarDays} label="Upcoming appointments" value={upcomingCount.toString()} sub="Requests, scheduled & confirmed" color="blue" />
+        <StatCard icon={MessageSquare} label="Active conversations" value={activeConvos.toString()} sub={activeConvos > 0 ? 'Needs attention' : 'All caught up'} color="amber" />
         <StatCard icon={DollarSign} label="Pipeline value" value={`$${pipelineValue.toLocaleString()}`} sub="Estimated, not guaranteed" color="green" />
       </div>
 
@@ -155,7 +161,7 @@ export default function DashboardHome() {
               View all
             </button>
           </div>
-          {leads.filter((l) => l.status === 'new' || l.status === 'contacted').length === 0 ? (
+          {attentionLeads.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
                 <Inbox className="h-6 w-6" />
@@ -164,7 +170,7 @@ export default function DashboardHome() {
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {leads.filter((l) => l.status === 'new' || l.status === 'contacted').slice(0, 4).map((lead) => (
+              {attentionLeads.map((lead) => (
                 <div key={lead.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
@@ -203,7 +209,7 @@ export default function DashboardHome() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-900">{emp.name}</p>
-                    <p className="text-xs text-slate-500">{emp.conversations} conversations · {emp.actions} actions</p>
+                    <p className="text-xs text-slate-500">{emp.role}</p>
                   </div>
                   <span className={`badge ${emp.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                     <span className={`h-1.5 w-1.5 rounded-full ${emp.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
@@ -285,11 +291,11 @@ export default function DashboardHome() {
             </div>
             <div>
               <p className="text-sm text-slate-500">Conversations captured by AI</p>
-              <p className="text-2xl font-bold text-slate-900">{conversations.length}</p>
+              <p className="text-2xl font-bold text-slate-900">{totalConvos}</p>
             </div>
           </div>
           <p className="mt-3 text-xs text-slate-400">
-            {activeConvos.length} active · {conversations.length - activeConvos.length} closed
+            {activeConvos} active · {totalConvos - activeConvos} closed
           </p>
         </div>
       </div>

@@ -4,7 +4,7 @@ import TurnstileWidget from '@/components/TurnstileWidget';
 
 interface ChatMsg {
   id: string;
-  sender: 'customer' | 'ai';
+  sender: 'customer' | 'ai' | 'human';
   text: string;
 }
 
@@ -24,8 +24,10 @@ export default function ChatWidget() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [verificationStarted, setVerificationStarted] = useState(false);
   const [unread, setUnread] = useState(false);
+  const [replyDeliveryError, setReplyDeliveryError] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const seenHumanMessageIds = useRef(new Set<string>());
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -45,6 +47,72 @@ export default function ChatWidget() {
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !conversationId) return;
+
+    let active = true;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let nextPollDelay = 15_000;
+
+    const pollForHumanReplies = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            action: 'fetch_human_replies',
+            sessionId,
+            conversationId,
+          }),
+        });
+        if (!response.ok) {
+          throw new Error(`Reply check failed (${response.status})`);
+        }
+
+        const data = await response.json();
+        const newReplies: ChatMsg[] = (Array.isArray(data.messages) ? data.messages : [])
+          .flatMap((message: unknown) => {
+            if (!message || typeof message !== 'object') return [];
+            const candidate = message as Record<string, unknown>;
+            if (
+              typeof candidate.id !== 'string'
+              || candidate.sender !== 'human'
+              || typeof candidate.text !== 'string'
+            ) {
+              return [];
+            }
+            if (seenHumanMessageIds.current.has(candidate.id)) return [];
+            seenHumanMessageIds.current.add(candidate.id);
+            return [{ id: candidate.id, sender: 'human' as const, text: candidate.text }];
+          });
+
+        if (newReplies.length > 0) {
+          setMessages((previous) => [...previous, ...newReplies]);
+        }
+        setReplyDeliveryError(false);
+        nextPollDelay = 15_000;
+      } catch (error) {
+        console.error('Unable to check for human chat replies:', error);
+        setReplyDeliveryError(true);
+        nextPollDelay = 60_000;
+      }
+
+      if (active) {
+        timeout = setTimeout(pollForHumanReplies, nextPollDelay);
+      }
+    };
+
+    void pollForHumanReplies();
+    return () => {
+      active = false;
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [open, conversationId, sessionId]);
 
   const sendMessage = async () => {
     if (!receptionistAvailable) {
@@ -201,7 +269,7 @@ export default function ChatWidget() {
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4">
+          <div ref={scrollRef} aria-live="polite" aria-label="Chat messages" className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4">
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -212,6 +280,10 @@ export default function ChatWidget() {
                     <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-600">
                       <Bot className="h-4 w-4" />
                     </div>
+                  ) : msg.sender === 'human' ? (
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                      <UserCircle className="h-4 w-4" />
+                    </div>
                   ) : (
                     <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500">
                       <UserCircle className="h-4 w-4" />
@@ -221,14 +293,24 @@ export default function ChatWidget() {
                     className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm ${
                       msg.sender === 'customer'
                         ? 'rounded-br-sm bg-teal-600 text-white'
-                        : 'rounded-bl-sm bg-white text-slate-800 ring-1 ring-slate-200'
+                        : msg.sender === 'human'
+                          ? 'rounded-bl-sm bg-blue-600 text-white'
+                          : 'rounded-bl-sm bg-white text-slate-800 ring-1 ring-slate-200'
                     }`}
                   >
+                    {msg.sender === 'human' && (
+                    <p className="mb-1 text-[10px] font-semibold text-blue-100">WorkforceAI team</p>
+                    )}
                     {msg.text}
                   </div>
                 </div>
               </div>
             ))}
+            {replyDeliveryError && (
+              <p role="status" className="text-center text-xs text-amber-700">
+                Live team replies are temporarily unavailable. Please keep this chat open and try again shortly.
+              </p>
+            )}
             {loading && (
               <div className="flex justify-start">
                 <div className="flex items-end gap-2">

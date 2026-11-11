@@ -8,6 +8,14 @@ test('landing page renders the primary marketing sections', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'Frequently asked questions', exact: true })).toBeVisible();
 });
 
+test('About footer link opens the company overview', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'About', exact: true }).click();
+  await expect(page).toHaveURL(/\/about$/);
+  await expect(page.getByRole('heading', { name: 'About WorkforceAI' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Built for the realities of service work' })).toBeVisible();
+});
+
 test('unknown paths show the 404 page', async ({ page }) => {
   await page.goto('/does-not-exist');
   await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();

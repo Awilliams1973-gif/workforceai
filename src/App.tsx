@@ -14,6 +14,7 @@ import AppointmentsPage from '@/components/AppointmentsPage';
 import ReceptionistPage from '@/components/ReceptionistPage';
 import ConversationsPage from '@/components/ConversationsPage';
 import KnowledgePage from '@/components/KnowledgePage';
+import BillingPage from '@/components/BillingPage';
 import AIEmployeePage from '@/components/AIEmployeePage';
 import SettingsPage from '@/components/SettingsPage';
 import AuditLeadsPage from '@/components/AuditLeadsPage';
@@ -36,6 +37,7 @@ const dashboardViews = [
   'receptionist',
   'conversations',
   'knowledge',
+  'pricing',
   'sales',
   'appointments-assistant',
   'marketing',
@@ -44,9 +46,17 @@ const dashboardViews = [
   'audit-leads',
 ];
 
-function App() {
-  const { view, setView, user, setUser, isAdmin, setIsAdmin } = useAppStore();
-  const [authReady, setAuthReady] = useState(false);
+const publicPaths = new Set(['/', '/index.html', '/about', '/privacy', '/terms', '/refund', '/contact']);
+
+function App({ initialPath = '/' }: { initialPath?: string }) {
+  const appState = useAppStore();
+  const view = typeof window === 'undefined' ? viewFromPath(initialPath) : appState.view;
+  const { setView, user, setUser, isAdmin, setIsAdmin } = appState;
+  const [authReady, setAuthReady] = useState(() => (
+    typeof window === 'undefined'
+      ? true
+      : publicPaths.has(window.location.pathname.replace(/\/+$/, '') || '/')
+  ));
   const [authError, setAuthError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
@@ -249,8 +259,9 @@ function App() {
     );
   }
 
-  const knownPaths = new Set(['', '/', '/index.html', '/dashboard', '/privacy', '/terms', '/refund', '/contact']);
-  const hasKnownPath = knownPaths.has(window.location.pathname.replace(/(.)\/+$/, '$1'));
+  const pathname = typeof window === 'undefined' ? initialPath : window.location.pathname;
+  const knownPaths = new Set(['', '/', '/index.html', '/dashboard', '/about', '/privacy', '/terms', '/refund', '/contact']);
+  const hasKnownPath = knownPaths.has(pathname.replace(/(.)\/+$/, '$1'));
 
   if (!hasKnownPath) {
     return <NotFoundPage />;
@@ -330,6 +341,9 @@ function App() {
           {view === 'knowledge' && <KnowledgePage />}
         </KnowledgeErrorBoundary>
         <SectionErrorBoundary>
+          {view === 'pricing' && <BillingPage />}
+        </SectionErrorBoundary>
+        <SectionErrorBoundary>
           {view === 'sales' && <AIEmployeePage employeeId="sales" />}
         </SectionErrorBoundary>
         <SectionErrorBoundary>
@@ -358,7 +372,7 @@ function App() {
       <main className="flex-1">
         {view === 'audit' ? (
           <AuditPage />
-        ) : view === 'privacy' || view === 'terms' || view === 'refund' || view === 'contact' ? (
+        ) : view === 'about' || view === 'privacy' || view === 'terms' || view === 'refund' || view === 'contact' ? (
           <InfoPages view={view} />
         ) : (
           <LandingPage />

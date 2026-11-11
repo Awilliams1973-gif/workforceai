@@ -54,7 +54,8 @@ export default function ConversationsPage() {
         *,
         messages:chat_messages(*)
       `)
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false })
+      .limit(100);
 
     if (fetchError) {
       setError('Unable to load conversations. Please try again.');
@@ -97,7 +98,7 @@ export default function ConversationsPage() {
     if (!draft.trim() || !active || sending) return;
     setSending(true);
 
-    const { data: newMsg } = await supabase
+    const { data: newMsg, error: sendError } = await supabase
       .from('chat_messages')
       .insert({
         conversation_id: active.id,
@@ -107,15 +108,23 @@ export default function ConversationsPage() {
       .select('*')
       .single();
 
+    if (sendError || !newMsg) {
+      console.error('Failed to send human chat reply:', sendError || 'No message row was returned.');
+      setError('Unable to send reply. Please try again.');
+      setSending(false);
+      return;
+    }
+
     if (newMsg) {
       setConversations((prev) =>
         prev.map((c) =>
           c.id === active.id
-            ? { ...c, messages: [...c.messages!, newMsg], updated_at: new Date().toISOString() }
+            ? { ...c, messages: [...(c.messages ?? []), newMsg], updated_at: new Date().toISOString() }
             : c
         )
       );
     }
+    setError(null);
     setDraft('');
     setSending(false);
   };

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { notifyOwner } from "../_shared/notify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +43,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const serviceRoleKey = Deno.env.get("SB_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceRoleKey) {
       return new Response(JSON.stringify({ error: "Audit service is not configured" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -77,6 +78,18 @@ Deno.serve(async (req: Request) => {
       console.error("Audit insert failed:", error);
       return new Response(JSON.stringify({ error: "Unable to submit audit" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    await notifyOwner({
+      subject: `New AI audit request: ${String(submission.businessName).trim()}`,
+      lines: [
+        ["Name", submission.name],
+        ["Business", submission.businessName],
+        ["Email", submission.email],
+        ["Phone", submission.phone],
+        ["Industry", submission.industry],
+        ["Estimated yearly opportunity", `$${estimatedOpportunity.toLocaleString("en-US")}`],
+      ],
+    }, Deno.env);
 
     return new Response(JSON.stringify({ estimatedOpportunity }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {

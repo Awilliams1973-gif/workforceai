@@ -14,13 +14,23 @@ async function verifyStripeSignature(payload, signature, secret) {
   ]);
   const parts = signature.split(",");
   const tPart = parts.find((p)=>p.startsWith("t="));
-  const v1Part = parts.find((p)=>p.startsWith("v1="));
-  if (!tPart || !v1Part) return false;
+  // Stripe sends one v1 signature per active secret while a rolled secret is still valid.
+  const v1Parts = parts.filter((p)=>p.startsWith("v1="));
+  if (!tPart || v1Parts.length === 0) return false;
   const timestamp = tPart.slice(2);
-  const signatureHex = v1Part.slice(2);
   const signedPayload = `${timestamp}.${payload}`;
-  const signatureBytes = new Uint8Array(signatureHex.match(/.{1,2}/g).map((b)=>parseInt(b, 16)));
-  return await crypto.subtle.verify("HMAC", key, signatureBytes, enc.encode(signedPayload));
+  for (const v1Part of v1Parts){
+    const signatureHex = v1Part.slice(3).trim();
+    if (!/^([0-9a-fA-F]{2})+$/.test(signatureHex)) continue;
+    const signatureBytes = new Uint8Array(signatureHex.match(/.{1,2}/g).map((b)=>parseInt(b, 16)));
+    if (await crypto.subtle.verify("HMAC", key, signatureBytes, enc.encode(signedPayload))) return true;
+  }
+  return false;
+}
+// Newer Stripe API versions moved current_period_end onto the subscription items.
+function periodEndIso(subscription) {
+  const end = subscription.current_period_end ?? subscription.items?.data?.[0]?.current_period_end;
+  return typeof end === "number" ? new Date(end * 1000).toISOString() : null;
 }
 Deno.serve(async (req)=>{
   if (req.method === "OPTIONS") {
@@ -31,7 +41,7 @@ Deno.serve(async (req)=>{
   }
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseKey = Deno.env.get("SB_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(supabaseUrl, supabaseKey);
     const runtimeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")?.trim();
     const { data: secretRow } = await supabase.from("app_secrets").select("key_value").eq("key_name", "STRIPE_WEBHOOK_SECRET").maybeSingle();
@@ -121,7 +131,7 @@ Deno.serve(async (req)=>{
               stripe_price_id: priceId,
               plan_name: planName,
               status: subscription.status || "active",
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              current_period_end: periodEndIso(subscription),
               updated_at: new Date().toISOString()
             }, {
               onConflict: "stripe_subscription_id"
@@ -154,7 +164,7 @@ Deno.serve(async (req)=>{
               status: subscription.status,
               stripe_price_id: priceId,
               plan_name: planName,
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              current_period_end: periodEndIso(subscription),
               updated_at: new Date().toISOString()
             }).eq("stripe_subscription_id", subscriptionId);
           }

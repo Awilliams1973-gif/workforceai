@@ -184,6 +184,45 @@ const main = async () => {
   );
   console.log('PASS: non-admin staging account cannot insert human chat messages');
 
+  // Subscriptions are service-role-write only: clients must not grant themselves a plan.
+  const subscriptionInsert = await accountA.client
+    .from('subscriptions')
+    .insert({ user_id: accountA.userId, plan_name: 'rls-test', status: 'active' })
+    .select('id');
+  if (!subscriptionInsert.error && subscriptionInsert.data?.length) {
+    console.error(`UNEXPECTED subscription rows created. IDs: ${subscriptionInsert.data.map((row) => row.id).join(', ')}`);
+  }
+  assert(
+    subscriptionInsert.error?.code === '42501',
+    'An authenticated client was able to insert a subscription.',
+  );
+  await expectBlockedByRls(
+    await accountA.client.from('subscriptions').update({ plan_name: 'rls-test' }).eq('user_id', accountA.userId).select('id'),
+    'Client subscription update',
+  );
+  await expectBlockedByRls(
+    await accountA.client.from('subscriptions').delete().eq('user_id', accountA.userId).select('id'),
+    'Client subscription delete',
+  );
+  const otherSubscriptions = assertResult(
+    await accountB.client.from('subscriptions').select('user_id').eq('user_id', accountA.userId),
+    'Checking cross-user subscription visibility',
+  );
+  assert(otherSubscriptions.length === 0, 'Business B could read business A subscription.');
+  console.log('PASS: clients cannot write subscriptions or read other users\' subscriptions');
+
+  const anonClient = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const anonSummary = await anonClient.rpc('get_dashboard_summary');
+  assert(anonSummary.error?.code === '42501', 'Anonymous clients can execute get_dashboard_summary.');
+  const summaryA = assertResult(await accountA.client.rpc('get_dashboard_summary'), 'Calling get_dashboard_summary');
+  assert(
+    summaryA && typeof summaryA.total_leads === 'number',
+    'get_dashboard_summary returned an unexpected shape.',
+  );
+  console.log('PASS: get_dashboard_summary is denied to anon and works for authenticated users');
+
   const marker = `RLS isolation test ${crypto.randomUUID()}`;
   const createdByA = { leads: [], appointments: [], business_settings: [] };
   const unexpectedCrossBusinessRows = { leads: [], appointments: [], business_settings: [] };

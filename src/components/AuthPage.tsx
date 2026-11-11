@@ -86,6 +86,10 @@ export default function AuthPage({
         : 'Too many sign-in attempts. Please wait a few minutes and try again.';
     }
 
+    if (/failed to fetch|networkerror|network request failed|load failed/i.test(msg)) {
+      return "We couldn't reach the server. Check your internet connection and try again.";
+    }
+
     return msg;
   };
 
