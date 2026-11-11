@@ -98,6 +98,12 @@ function App({ initialPath = '/' }: { initialPath?: string }) {
 
         if (session?.user) {
           setUser(session.user);
+          if (
+            window.location.pathname.replace(/\/+$/, '') === '/dashboard'
+            && useAppStore.getState().view === 'home'
+          ) {
+            setView('dashboard');
+          }
           try {
             const { data: profile, error: profileError } = await supabase
               .from('profiles')
